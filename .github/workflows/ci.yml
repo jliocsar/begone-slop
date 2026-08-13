@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run fmt:check
+
+  installable:
+    name: installs and runs under node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: bun install --frozen-lockfile
+
+      - name: Pack the tarball
+        run: echo "TARBALL=$(pwd)/$(npm pack --silent)" >> "$GITHUB_ENV"
+
+      - name: Install it into a project that is not this one
+        working-directory: ${{ runner.temp }}
+        run: |
+          npm init -y > /dev/null
+          npm i -D oxlint "$TARBALL"
+
+      - name: A rule must fire
+        working-directory: ${{ runner.temp }}
+        run: |
+          cat > .oxlintrc.json <<'JSON'
+          {
+            "extends": ["./node_modules/begone-slop/preset.json"],
+            "jsPlugins": ["begone-slop"]
+          }
+          JSON
+          echo 'export const widened = JSON.parse("{}") as any' > bad.ts
+          npx oxlint bad.ts > report.txt 2>&1 || true
+          cat report.txt
+          grep -q 'begone-slop(no-banned-type-assertions)' report.txt
