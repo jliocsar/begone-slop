@@ -11,7 +11,7 @@ const GENERATED_FILE_MARKER = '.generated.'
 const SHEBANG = 'Shebang'
 
 const MESSAGE =
-  'Remove this comment. Keep the code self-explanatory; lint and compiler directives remain available for explicit exceptions.'
+  'A comment drifts out of step with the code beneath it. Rename what reads unclearly, extract what needs explaining, and move anything durable into documentation. Tooling directives and SAFETY justifications are exempt.'
 
 function isExempt(comment: OxlintComment): boolean {
   return comment.type === SHEBANG || ALLOWED_DIRECTIVE.test(comment.value.trim())

@@ -1,7 +1,7 @@
 import { Rule } from 'effect-oxlint'
 
 const MESSAGE =
-  'Avoid Effect.asVoid. Prefer returning the effect directly when the success type is void.'
+  'Effect.asVoid throws away a success value the caller may still want. Return the effect unchanged when its success type is already void.'
 
 export default Rule.banMember('Effect', 'asVoid', {
   message: MESSAGE,

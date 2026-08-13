@@ -9,7 +9,8 @@ type NodeLike = { readonly [key: string]: unknown; readonly type: string }
 
 const PARENT_KEY = 'parent'
 
-const MESSAGE = 'Do not nest Effect Array method calls. Use pipe to preserve inference.'
+const MESSAGE =
+  'Nesting one Effect Array call inside another loses the inferred element type at the boundary. Chain the calls through pipe so each step keeps its inference.'
 
 // oxlint-disable-next-line begone-slop/no-unknown-parameters -- walks arbitrary AST fields; oxlint's node types do not model them
 function isNodeLike(value: unknown): value is NodeLike {

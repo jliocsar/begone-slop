@@ -6,7 +6,8 @@ const EQUALITY_OPERATORS = new Set(['==', '===', '!=', '!=='])
 
 const MINIMUM_LITERAL_CHECKS = 2
 
-const MESSAGE = 'Use Match from effect instead of a chained literal ternary.'
+const MESSAGE =
+  'A ternary chain over one subject is a match written by hand, with nothing checking the cases are complete. Express it with Match from Effect.'
 
 function isLiteralSide(node: ESTree.Node): boolean {
   return (

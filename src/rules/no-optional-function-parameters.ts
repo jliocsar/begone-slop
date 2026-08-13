@@ -8,7 +8,7 @@ type PossiblyOptionalParameter = {
 }
 
 const MESSAGE =
-  'Optional function parameters are banned. Use an explicit union with undefined or null.'
+  'An optional parameter leaves the caller unable to distinguish absence from a value never passed. Take the parameter explicitly and widen its type with undefined or null.'
 
 function isOptionalParameter(parameter: PossiblyOptionalParameter): boolean {
   return parameter.optional === true || parameter.parameter?.optional === true

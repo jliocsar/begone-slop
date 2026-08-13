@@ -6,7 +6,7 @@ import { EFFECT_ARRAY_BINDING, importsEffectArrayUnaliased } from '../shared/eff
 const STANDARD_ARRAY_STATICS = new Set(['from', 'isArray', 'of'])
 
 const MESSAGE =
-  'Array is imported from effect in this file. Use globalThis.Array for standard Array static APIs.'
+  'Array here refers to the Effect module, so a standard static resolves to something else entirely. Reach for globalThis.Array when you want the built-in.'
 
 function readsStandardStatic(node: ESTree.Node): boolean {
   if (node.type !== 'MemberExpression') {

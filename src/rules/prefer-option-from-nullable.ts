@@ -6,7 +6,7 @@ const OPTION_MODULE = 'Option'
 const NULLABLE_OPERATORS = new Set(['!==', '!='])
 
 const MESSAGE =
-  'Use Option.fromNullable instead of a nullable ternary with Option.some and Option.none.'
+  'Wrapping a null check in Option.some and Option.none restates what Option.fromNullable already does. Call it directly.'
 
 function isNullLiteral(node: ESTree.Node): boolean {
   return node.type === 'Literal' && node.value === null

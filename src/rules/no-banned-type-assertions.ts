@@ -3,7 +3,8 @@ import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 
 const BANNED_TYPE_ANNOTATIONS = new Set(['TSAnyKeyword', 'TSNeverKeyword', 'TSUnknownKeyword'])
 
-const MESSAGE = 'Do not assert to any, never, or unknown. Fix the type or use generics.'
+const MESSAGE =
+  'Asserting to any, never or unknown discards the very checking you are about to rely on. Give the value a real type, or make the function generic over it.'
 
 function assertsToBannedType(node: ESTree.Node): boolean {
   if (node.type !== 'TSAsExpression' && node.type !== 'TSTypeAssertion') {

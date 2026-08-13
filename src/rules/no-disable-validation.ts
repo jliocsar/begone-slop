@@ -4,7 +4,7 @@ import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 const DISABLE_VALIDATION_KEY = 'disableValidation'
 
 const MESSAGE =
-  'Do not use disableValidation: true. Fix the data or schema and keep validation enabled.'
+  'Disabling validation decodes without checking, so the result carries a type nothing verified. Correct the schema or the data and leave validation on.'
 
 function namesTheOption(key: ESTree.Node): boolean {
   if (key.type === 'Identifier' || key.type === 'PrivateIdentifier') {

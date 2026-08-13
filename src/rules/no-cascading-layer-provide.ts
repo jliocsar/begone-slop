@@ -11,7 +11,7 @@ const PROVISIONING_METHODS = new Set(['provide', 'provideMerge'])
 const CASCADING_STAGE_COUNT = 2
 
 const MESSAGE =
-  'Avoid multiple Layer.provide or Layer.provideMerge stages in one pipe. Combine independent dependencies in one Layer.provide([...]); when a layer depends on another layer, extract and name that configured layer before providing it.'
+  'Each provisioning stage in a pipe rebuilds the layer graph, so a chain of them hides the order in which dependencies are actually satisfied. Provide independent layers together in a single call, and give a configured layer a name before another layer consumes it.'
 
 function namesAProvisioningMethod(property: ESTree.Node): boolean {
   if (property.type === 'Identifier') {

@@ -10,7 +10,7 @@ const DEFAULT_ALLOWED_FILENAMES = ['loading.tsx', 'not-found.tsx']
 const DEFAULT_ROUTE_DIRECTORY_NAMES = ['app']
 
 const MESSAGE =
-  'Do not create re-export-only modules. Import from the owning module directly or add this intentional public entrypoint as an exact lint override.'
+  'A module that only re-exports adds a hop without adding meaning, and hides where a symbol actually lives. Import from the owning module, or override this rule for a deliberate public entrypoint.'
 
 const Options = Schema.Struct({
   allowedFilenames: Schema.Array(Schema.String).pipe(

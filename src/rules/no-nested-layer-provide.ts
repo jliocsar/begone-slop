@@ -7,7 +7,7 @@ const LAYER_BINDING = 'Layer'
 const PROVIDE = 'provide'
 
 const MESSAGE =
-  'Avoid nested Layer.provide calls. Extract the inner layer or use Layer.provideMerge.'
+  'A Layer.provide inside another buries which layer satisfies which requirement. Name the inner layer first, or merge the two with Layer.provideMerge.'
 
 function isLayerProvideCall(node: ESTree.Node): boolean {
   if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {

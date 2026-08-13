@@ -15,6 +15,26 @@ npm i -D begone-slop oxlint
 
 ## Use
 
+```ts
+// oxlint.config.ts
+import { defineConfig } from 'oxlint'
+import preset from 'begone-slop/preset.json' with { type: 'json' }
+
+export default defineConfig({
+  extends: [preset],
+  jsPlugins: ['begone-slop'],
+})
+```
+
+That is the whole setup. `extends` pulls in the 37 rules the preset enables, and `jsPlugins` loads
+the plugin itself. Both resolve as ordinary module specifiers, because in a TypeScript config
+`extends` takes config _objects_ and your runtime does the resolving.
+
+This file is discovered automatically, but it has to be loaded as TypeScript — so it needs a current
+Node LTS or Bun. On anything older, use the JSON config below.
+
+### The JSON config
+
 ```jsonc
 // .oxlintrc.json
 {
@@ -23,16 +43,10 @@ npm i -D begone-slop oxlint
 }
 ```
 
-That is the whole setup. `extends` pulls in the 37 rules the preset enables, and `jsPlugins` loads
-the plugin itself.
-
-Two things about that snippet are not arbitrary, and both are measured:
-
-- **`jsPlugins` takes a bare package specifier**, so `"begone-slop"` resolves the way an import
-  would.
-- **`extends` does not.** It resolves relative to the config file, so the explicit
-  `./node_modules/...` path is required. `"begone-slop/preset.json"` silently resolves to
-  `./begone-slop/preset.json` and fails.
+Equivalent, and loaded by any runtime. The one wart: **`extends` here does not take a package
+specifier.** It resolves relative to the config file, so `"begone-slop/preset.json"` would silently
+mean `./begone-slop/preset.json` and fail — hence the explicit path. `jsPlugins` has no such
+limitation. Both behaviours are measured.
 
 Prefer to pick your own rules? Skip `extends` and enable them by name:
 
@@ -135,6 +149,23 @@ plugin behaviour without a major version bump. Every rule here is covered by a t
 both the exact lines it reports on a deliberately-bad fixture _and_ that it reports nothing on a
 clean one, so a break shows up as a failing test rather than a silent no-op.
 
+## Prior art
+
+Some of these rules exist because somebody else thought of them first. Two projects were used as a
+reference while building this one, and it would be poor form not to say so:
+
+- **[anti-slop](https://github.com/dmmulroy/anti-slop)** by Dillon Mulroy — MIT. The evidence-first
+  rules owe most to this one: the type-assertion family, the `unknown` and dictionary rules, and the
+  idea that an assertion should have to justify itself.
+- **[ai-automation](https://github.com/typeonce-dev/ai-automation)** by typeonce-dev — the Effect
+  rules, and a good chunk of the taste behind them.
+
+Every rule here is an independent implementation written against a different plugin API, and the
+diagnostics are our own. Where behaviour matches, it is because the underlying idea was right, not
+because code was carried across. Any resemblance in wording has been removed deliberately.
+
+If you like these, go and look at both projects — they cover ground this one does not.
+
 ## Licence
 
-MIT
+MIT, with portions derived from `anti-slop` (also MIT) — see `LICENSE`.

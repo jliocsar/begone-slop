@@ -5,7 +5,8 @@ const PIPE_PROPERTY = 'pipe'
 
 const MAXIMUM_PIPE_ARGUMENTS = 20
 
-const MESSAGE = 'This pipe has too many arguments. Split it into smaller named steps.'
+const MESSAGE =
+  'A pipe this long is hard to follow and slow to typecheck. Extract named steps and compose those instead.'
 
 function isOversizedPipeCall(node: ESTree.CallExpression): boolean {
   const { callee } = node
