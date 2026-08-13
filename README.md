@@ -125,7 +125,7 @@ with the code above it. It leaves `SAFETY:` comments and tooling directives (`ox
 ## Requirements
 
 - **oxlint** `^1.77.0`, as a peer of your project.
-- **Node** — no version constraint. The published package is compiled ESM.
+- **Node** — a current LTS. The package is compiled ESM and nothing older is tested.
 - `effect` ships as a dependency, so there is nothing else to install.
 
 ## Caveat
