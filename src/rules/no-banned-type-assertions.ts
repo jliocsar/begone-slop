@@ -1,17 +1,3 @@
-/**
- * An assertion to `any`, `never` or `unknown` erases the type instead of
- * describing it, so every downstream check is decided by the assertion rather
- * than by the code.
- *
- * Both assertion spellings count: `x as any` and the angle-bracket `<any>x`.
- * `satisfies`, `as const` and an assertion to a named type are untouched — only
- * the three keywords are banned. In `x as unknown as Foo` that leaves the inner
- * `x as unknown` reported and the outer one, whose annotation is a type
- * reference, silent.
- *
- * Report-only — the fix is a real type or a generic, which only the author has.
- */
-
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 

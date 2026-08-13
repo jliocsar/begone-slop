@@ -1,15 +1,3 @@
-/**
- * Importing `Array` from effect shadows the global constructor, so `Array.from`
- * in that file reads as an effect module member and resolves to something else
- * entirely. Reach the standard statics through `globalThis.Array`.
- *
- * Only the three statics effect's module does not carry are flagged, and only in
- * a file that took the unaliased import — see `shared/effect-array-import.ts`.
- *
- * Report-only — `globalThis.Array` is the fix but the call may not be wanted at
- * all once the shadow is visible.
- */
-
 import * as Effect from 'effect/Effect'
 import * as Ref from 'effect/Ref'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'

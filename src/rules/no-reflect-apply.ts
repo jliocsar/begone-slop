@@ -1,14 +1,3 @@
-/**
- * `Reflect.apply` invokes a function through an untyped argument array, so the
- * arity and parameter types go unchecked. Call the function directly, or put the
- * dynamic dispatch behind a named interface that states what may be called.
- *
- * `Reflect['apply'](…)` is the same call, so the computed form counts too. A
- * local `Reflect` does not — see `shared/reflect-method.ts`.
- *
- * Report-only — the replacement depends on what is being dispatched.
- */
-
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 import { isGlobalReflectMethodCall } from '../shared/reflect-method.ts'

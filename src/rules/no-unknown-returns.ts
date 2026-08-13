@@ -1,18 +1,3 @@
-/**
- * A return contract of `unknown` hands the caller a value it cannot use until
- * it re-parses it, which is the parsing the function itself skipped. Parse at
- * the boundary and return the named domain type.
- *
- * `unknown` counts wherever it reaches the top level of the contract: directly,
- * through parentheses, as any member of a union, inside `Promise`/`PromiseLike`
- * (matched by NAME — a locally shadowed `Promise` still counts), or through a
- * top-level non-generic alias, resolved recursively. Nested in an object or a
- * property (`(): { cause: unknown }`) it is a field, not the contract, and is
- * left alone; so is a generic parameter that shadows an alias name.
- *
- * Report-only — the replacement is the parsed type, which only the author has.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
@@ -27,21 +12,12 @@ import {
 
 type AliasesByName = ReadonlyMap<string, ESTree.TSTypeAliasDeclaration>
 
-/** Awaiting one of these yields its first type argument, so it is transparent. */
 const PROMISE_TYPE_NAMES = new Set(['Promise', 'PromiseLike'])
 
 const MESSAGE =
   'This function exposes `unknown` to its caller. Parse the value at its boundary and return a named domain type.'
 
-/**
- * The alias a bare reference names, or none when type arguments are present: an
- * applied generic resolves to its arguments, not to the body written here.
- */
 function referencedAliasName(type: ESTree.TSType): Option.Option<string> {
-  if (type.type === 'TSParenthesizedType') {
-    return referencedAliasName(type.typeAnnotation)
-  }
-
   if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
     return Option.none()
   }
@@ -61,10 +37,6 @@ function resolvesToUnknown(
 ): boolean {
   if (type.type === 'TSUnknownKeyword') {
     return true
-  }
-
-  if (type.type === 'TSParenthesizedType') {
-    return resolvesToUnknown(aliases, shadowedAliases, visited, type.typeAnnotation)
   }
 
   if (type.type === 'TSUnionType') {
@@ -137,7 +109,7 @@ function unknownReturnDiagnostic(
     Option.filter((type) =>
       resolvesToUnknown(aliases, lexicalTypeParameterNames(sourceCode, node), [], type),
     ),
-    Option.map((type) => Diagnostic.make({ node: type, message: MESSAGE })),
+    Option.map((type) => Diagnostic.fromId({ node: type, messageId: 'unknownReturn' })),
   )
 }
 
@@ -146,10 +118,10 @@ export default Rule.define({
   meta: Rule.meta({
     type: 'problem',
     description: 'forbid functions whose return contract resolves to unknown',
+    messages: { unknownReturn: MESSAGE },
   }),
   create: function* () {
     const context = yield* RuleContext
-    // Collected once per file, so a function above its alias resolves too.
     const aliases = yield* Ref.make<AliasesByName>(new Map())
 
     const report = (node: ESTree.Node) =>

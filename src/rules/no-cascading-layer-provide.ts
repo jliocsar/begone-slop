@@ -1,16 +1,6 @@
-/**
- * Two `Layer.provide` stages in one pipe hide the dependency graph: whether the
- * second layer feeds the first or the two are independent is invisible at the
- * call site, and the order is load-bearing either way.
- *
- * Method chaining (`.provide().provide()`) is untouched — only pipe ARGUMENTS
- * count, since that is the shape the fix applies to.
- *
- * Report-only — combining or extracting depends on which the author meant.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
+import * as Predicate from 'effect/Predicate'
 import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
 import { isEffectLayerReference } from '../shared/layer-import.ts'
 
@@ -18,7 +8,6 @@ const PIPE = 'pipe'
 
 const PROVISIONING_METHODS = new Set(['provide', 'provideMerge'])
 
-/** One provision stage is the intended shape; the second is what cascades. */
 const CASCADING_STAGE_COUNT = 2
 
 const MESSAGE =
@@ -31,7 +20,7 @@ function namesAProvisioningMethod(property: ESTree.Node): boolean {
 
   return (
     property.type === 'Literal' &&
-    typeof property.value === 'string' &&
+    Predicate.isString(property.value) &&
     PROVISIONING_METHODS.has(property.value)
   )
 }

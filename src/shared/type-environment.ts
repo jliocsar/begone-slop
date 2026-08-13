@@ -1,20 +1,7 @@
-/**
- * What the dictionary rules know about a file's own types, and the primitives
- * for reading a written type: the top-level aliases and interfaces, and which
- * built-in names the file has taken over.
- *
- * A built-in the file declares or imports (`Record`, `Readonly`, …) loses its
- * built-in meaning for that whole file. Both import spellings bind it — the
- * barrel's named export and the leaf namespace import this repo's style
- * mandates (`import * as Record from 'effect/Record'`) — because a specifier's
- * LOCAL name is what is read (measured: both suppress the rule).
- */
-
 import * as Arr from 'effect/Array'
 import * as Option from 'effect/Option'
 import type { ESTree } from 'effect-oxlint'
 
-/** Generic arguments bound by an alias application, by parameter name. */
 export type TypeAliasEnvironment = ReadonlyMap<string, ESTree.TSType>
 
 export type TypeEnvironment = {
@@ -23,7 +10,6 @@ export type TypeEnvironment = {
   readonly shadowedBuiltIns: ReadonlySet<string>
 }
 
-/** The global names this interpreter understands; anything else is opaque. */
 const BUILT_INS = new Set([
   'Record',
   'Readonly',
@@ -35,17 +21,14 @@ const BUILT_INS = new Set([
   'NonNullable',
 ])
 
-/** Wrappers that keep their argument's dictionary shape, so they unwrap. */
 export const TRANSPARENT_WRAPPERS = new Set(['Readonly', 'Partial', 'Required', 'NonNullable'])
 
-/** What a rule holds before its `Program` handler has run. */
 export const EMPTY_TYPE_ENVIRONMENT: TypeEnvironment = {
   aliases: new Map(),
   interfaces: new Map(),
   shadowedBuiltIns: new Set(),
 }
 
-/** The declaration a top-level statement carries, `export` stripped. */
 function declaredStatement(
   statement: ESTree.Directive | ESTree.Statement,
 ): Option.Option<ESTree.Node> {
@@ -67,7 +50,6 @@ function topLevelDeclarations(program: ESTree.Node): readonly ESTree.Node[] {
   return Arr.getSomes(Arr.map(program.body, declaredStatement))
 }
 
-/** Every name a top-level declaration binds in the module scope. */
 function boundNames(declaration: ESTree.Node): readonly string[] {
   if (declaration.type === 'ImportDeclaration') {
     return Arr.map(declaration.specifiers, (specifier) => specifier.local.name)
@@ -99,12 +81,10 @@ function isInterfaceDeclaration(node: ESTree.Node): node is ESTree.TSInterfaceDe
   return node.type === 'TSInterfaceDeclaration'
 }
 
-/** Names written more than once, which no longer resolve to one declaration. */
 function duplicateNames(names: readonly string[]): readonly string[] {
   return Arr.filter(names, (name, index) => Arr.contains(Arr.take(names, index), name))
 }
 
-/** Reversed so the FIRST declaration of a name wins, as upstream resolves it. */
 function aliasesByName(
   aliases: readonly ESTree.TSTypeAliasDeclaration[],
 ): ReadonlyMap<string, ESTree.TSTypeAliasDeclaration> {
@@ -116,14 +96,12 @@ function aliasesByName(
   )
 }
 
-/** Interfaces keep every declaration of a name: two of them means merging. */
 function interfacesByName(
   declarations: readonly ESTree.TSInterfaceDeclaration[],
 ): ReadonlyMap<string, readonly ESTree.TSInterfaceDeclaration[]> {
   return new Map(Object.entries(Arr.groupBy(declarations, (declaration) => declaration.id.name)))
 }
 
-/** Read from `Program` in one pass, so a type resolves against the whole file. */
 export function createTypeEnvironment(program: ESTree.Node): TypeEnvironment {
   const declarations = topLevelDeclarations(program)
   const aliases = Arr.filter(declarations, isTypeAliasDeclaration)
@@ -146,24 +124,12 @@ export function isBuiltIn(name: string, environment: TypeEnvironment): boolean {
   return BUILT_INS.has(name) && !environment.shadowedBuiltIns.has(name)
 }
 
-/**
- * Parentheses and `readonly` change nothing this interpreter reads. oxlint
- * 1.77.0 emits no `TSParenthesizedType` at all (oxc strips redundant parens,
- * measured), so that branch is inert and kept only for parity with upstream.
- */
 export function unwrapTransparentType(type: ESTree.TSType): ESTree.TSType {
-  if (type.type === 'TSParenthesizedType') {
-    return unwrapTransparentType(type.typeAnnotation)
-  }
-
-  if (type.type === 'TSTypeOperator' && type.operator === 'readonly') {
-    return unwrapTransparentType(type.typeAnnotation)
-  }
-
-  return type
+  return type.type === 'TSTypeOperator' && type.operator === 'readonly'
+    ? unwrapTransparentType(type.typeAnnotation)
+    : type
 }
 
-/** `Value` bound to a bare `Value`: the parameter never received an argument. */
 export function isUnappliedReferenceTo(type: ESTree.TSType, name: string): boolean {
   const unwrapped = unwrapTransparentType(type)
 
@@ -177,7 +143,6 @@ export function isUnappliedReferenceTo(type: ESTree.TSType, name: string): boole
   )
 }
 
-/** An argument that is itself a bound parameter resolves through the bindings. */
 function resolvedSubstitutionArgument(
   type: ESTree.TSType,
   base: TypeAliasEnvironment,
@@ -200,12 +165,6 @@ function resolvedSubstitutionArgument(
   )
 }
 
-/**
- * The bindings an alias application introduces. None when a parameter has
- * neither an argument nor a default: the application then says nothing about
- * it. Each parameter resolves against the bindings made before it, as
- * TypeScript scopes defaults.
- */
 export function aliasSubstitution(
   alias: ESTree.TSTypeAliasDeclaration,
   type: ESTree.TSTypeReference,

@@ -1,14 +1,3 @@
-/**
- * Shared receiver check for the `Reflect.*` rules: does this callee name a
- * method on the real global `Reflect`?
- *
- * A local `Reflect` — declared, imported or parameter-bound — is somebody's own
- * object and none of our business. `isGlobalReference` alone is not enough: a
- * name the scope manager knows but nothing defines (an ambient declaration, an
- * implicit global) still resolves to a variable, so a miss and a definition-less
- * variable both count as the global.
- */
-
 import * as Option from 'effect/Option'
 import * as Predicate from 'effect/Predicate'
 import { type ESTree, type OxlintSourceCode, Scope } from 'effect-oxlint'
@@ -30,7 +19,6 @@ function namesTheGlobalReflect(sourceCode: OxlintSourceCode, object: ESTree.Node
   })
 }
 
-/** Reports whether a call target names one method on the global Reflect object. */
 export function isGlobalReflectMethodCall(
   sourceCode: OxlintSourceCode,
   callee: ESTree.Expression,

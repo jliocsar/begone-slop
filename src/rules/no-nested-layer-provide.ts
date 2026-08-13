@@ -1,16 +1,3 @@
-/**
- * `Layer.provide(a, Layer.provide(b, c))` reads as one expression but is two
- * dependency stages, and which layer ends up seeing which is guesswork at the
- * call site. Name the inner layer, or say `Layer.provideMerge`.
- *
- * Purely syntactic, exactly like the original: any `Layer.provide` receiver
- * counts, imported or not. `provideMerge` at either level is the fix, so it is
- * never reported.
- *
- * Report-only, once per nested argument — a call with two of them is two
- * separate extractions.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'

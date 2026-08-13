@@ -1,18 +1,3 @@
-/**
- * The vertical-spacing spec, ported from
- * `@stylistic/padding-line-between-statements` — oxlint has no equivalent. Takes
- * the same `{ blankLine, prev, next }` entries (last match wins), so the spec
- * stays declarative in the config; they arrive as ONE array argument because
- * `Rule.define` decodes `options[0]` only.
- *
- * Narrowed to what this repo writes: `blankLine: 'never'` and unknown statement
- * types fail to decode rather than becoming silent no-ops.
- *
- * `block-like` is classified structurally rather than by the original's token
- * walk, which needs `getLastToken`/`getNodeByRangeIndex`. The two readings agree
- * on everything the spec covers.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import { pipe } from 'effect/Function'
@@ -34,7 +19,6 @@ import {
   statementsOf,
 } from '../shared/source-position.ts'
 
-/** The statement types this port understands. Anything else fails to decode. */
 const STATEMENT_TYPES = [
   '*',
   'return',
@@ -49,7 +33,6 @@ const STATEMENT_TYPES = [
 const StatementType = Schema.Literals(STATEMENT_TYPES)
 type StatementType = typeof StatementType.Type
 
-/** `prev`/`next` accept a single type or a list; a list matches on any member. */
 const Spec = Schema.Struct({
   blankLine: Schema.Literals(['always', 'any']),
   prev: Schema.ArrayEnsure(StatementType),
@@ -59,10 +42,6 @@ const Spec = Schema.Struct({
 const Specs = Schema.Array(Spec)
 type Specs = typeof Specs.Type
 
-/**
- * Statements that own a block outright, as opposed to one reached through an
- * initialiser (`const f = () => { … }`) or a call (an IIFE).
- */
 const BLOCK_OWNING_STATEMENTS = new Set([
   'BlockStatement',
   'IfStatement',
@@ -75,10 +54,6 @@ const BLOCK_OWNING_STATEMENTS = new Set([
   'TryStatement',
 ])
 
-/**
- * A function or arrow whose body is a block — the shape that makes a `const`
- * declaration block-like, since the closing brace is the body's.
- */
 function isBlockBodiedFunction(node: ESTree.Node | null | undefined): boolean {
   if (node === null || node === undefined) {
     return false
@@ -89,7 +64,6 @@ function isBlockBodiedFunction(node: ESTree.Node | null | undefined): boolean {
   return isFunction && node.body?.type === 'BlockStatement'
 }
 
-/** `(function () { … })()` and `(() => { … })()` written as a statement. */
 function isImmediatelyInvokedBlock(node: ESTree.Node): boolean {
   if (node.type !== 'ExpressionStatement') {
     return false
@@ -110,7 +84,6 @@ function isBlockLike(node: ESTree.Node): boolean {
     return true
   }
 
-  // `const handler = () => { … }` — the block belongs to the initialiser.
   if (node.type === 'VariableDeclaration') {
     return node.declarations.some((declarator) => isBlockBodiedFunction(declarator.init))
   }
@@ -124,7 +97,6 @@ function isSingleLineDeclaration(node: ESTree.Node, kind: 'const' | 'let'): bool
   return isKind && node.loc.start.line === node.loc.end.line
 }
 
-/** `Match.exhaustive`: a new entry in `STATEMENT_TYPES` fails to compile here. */
 function matchesType(node: ESTree.Node, type: StatementType): boolean {
   return Match.value(type).pipe(
     Match.when('*', () => true),
@@ -139,10 +111,6 @@ function matchesType(node: ESTree.Node, type: StatementType): boolean {
   )
 }
 
-/**
- * Last matching entry wins, which is what lets the broad `always` rules lead and
- * the `any` exceptions trail.
- */
 function requiresBlankLine(specs: Specs, previous: ESTree.Node, current: ESTree.Node): boolean {
   const matches = (node: ESTree.Node, types: readonly StatementType[]) =>
     types.some((type) => matchesType(node, type))
@@ -156,11 +124,6 @@ function requiresBlankLine(specs: Specs, previous: ESTree.Node, current: ESTree.
   )
 }
 
-/**
- * Where the blank line goes. A comment above `current` introduces it, so the
- * fence belongs above the comment — and the gap is measured to the comment,
- * since a comment line is not a blank line.
- */
 function fenceAnchor(
   sourceCode: OxlintSourceCode,
   previous: ESTree.Node,
@@ -201,8 +164,6 @@ export default Rule.define({
       fixable: 'whitespace',
       messages: { expectedBlankLine: 'Expected a blank line before this statement.' },
     }),
-    // oxlint rejects options outright unless `schema` is present. It only has to
-    // admit the one array argument; `Specs` below is what actually validates it.
     schema: [{ type: 'array' }],
   },
   options: Specs,

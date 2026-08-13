@@ -1,12 +1,3 @@
-/**
- * The rules as an oxlint JS plugin. `Plugin.define`'s `name` supplies the
- * `begone-slop/` prefix the config uses.
- *
- * A `.ts` plugin only loads when oxlint itself runs under Bun — hence
- * `bunx --bun oxlint` everywhere. Under Node the import fails with
- * `ERR_UNKNOWN_FILE_EXTENSION`.
- */
-
 import { Plugin } from 'effect-oxlint'
 import expectPadding from './rules/expect-padding.ts'
 import noBannedTypeAssertions from './rules/no-banned-type-assertions.ts'

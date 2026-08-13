@@ -1,20 +1,8 @@
-/**
- * A pipeline past this length is unreadable and unnameable: nothing in it says
- * what any stretch of it does. Splitting it into named steps puts those names
- * back.
- *
- * Method form only (`x.pipe(...)`) — a standalone `pipe(a, b, ...)` call is
- * untouched, matching the rule this was ported from.
- *
- * Report-only — where the split belongs is the author's call.
- */
-
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 
 const PIPE_PROPERTY = 'pipe'
 
-/** Not configurable: one number everywhere is what makes it reviewable. */
 const MAXIMUM_PIPE_ARGUMENTS = 20
 
 const MESSAGE = 'This pipe has too many arguments. Split it into smaller named steps.'

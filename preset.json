@@ -40,6 +40,8 @@
     "begone-slop/no-widen-then-assert": "error",
     "begone-slop/no-object-parameters": "error",
     "begone-slop/no-module-mocking": "error",
+    "begone-slop/no-comments": "error",
+    "begone-slop/no-runtime-typeof": "error",
 
     "begone-slop/padding-line-between-statements": [
       "error",

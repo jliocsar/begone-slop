@@ -1,16 +1,3 @@
-/**
- * Shared binding check for the Layer rules: does this identifier resolve to
- * effect's `Layer` module?
- *
- * Two import forms count. The upstream rule only knew the barrel form
- * (`import { Layer } from 'effect'`), which `no-restricted-imports` rejects
- * here — so the namespace form (`import * as Layer from 'effect/Layer'`) is
- * accepted too, otherwise the rule could never fire in this repo.
- *
- * A `Layer` bound by anything else — a local const, another package — is
- * somebody else's object and not our business.
- */
-
 import * as Arr from 'effect/Array'
 import * as Option from 'effect/Option'
 import { type Definition, type ESTree, type OxlintSourceCode, Scope } from 'effect-oxlint'
@@ -21,7 +8,6 @@ const EFFECT_PACKAGE = 'effect'
 
 const EFFECT_LAYER_MODULE = 'effect/Layer'
 
-/** `import { Layer }` and `import { 'Layer' as … }` name the same export. */
 function namesTheLayerExport(imported: ESTree.ModuleExportName): boolean {
   return imported.type === 'Identifier'
     ? imported.name === LAYER_BINDING
@@ -48,7 +34,6 @@ function bindsEffectLayer(definition: Definition): boolean {
   )
 }
 
-/** Whether this node is an identifier resolving to an effect `Layer` import. */
 export function isEffectLayerReference(sourceCode: OxlintSourceCode, node: ESTree.Node): boolean {
   if (node.type !== 'Identifier') {
     return false

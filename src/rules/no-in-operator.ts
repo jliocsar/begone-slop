@@ -1,11 +1,3 @@
-/**
- * `'key' in value` is a structural probe standing in for a type the code failed
- * to carry. Widen the type where the value is produced instead.
- *
- * The `in` of `for (const key in value)` is a different node (`ForInStatement`)
- * and is left alone.
- */
-
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 

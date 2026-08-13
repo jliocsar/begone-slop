@@ -1,13 +1,3 @@
-/**
- * The value types a written type indexes to: what a caller gets back from
- * `dictionary[key]`. Index signatures and mapped types give one directly;
- * `Record` gives its second argument; `Readonly`/`Partial`/`Pick`/`Omit` keep
- * their source's index signatures, so they recurse; an alias resolves with its
- * generic arguments bound.
- *
- * An empty result means the type is not a dictionary at all.
- */
-
 import * as Arr from 'effect/Array'
 import * as Option from 'effect/Option'
 import type { ESTree } from 'effect-oxlint'
@@ -22,7 +12,6 @@ import {
   unwrapTransparentType,
 } from './type-environment.ts'
 
-/** A type together with the substitutions in scope where it was written. */
 export type ResolvedType = {
   readonly type: ESTree.TSType
   readonly substitutions: TypeAliasEnvironment
@@ -41,7 +30,6 @@ function memberValueTypes(
   )
 }
 
-/** One type argument taken as the value type, as written. */
 function argumentValueType(
   reference: ESTree.TSTypeReference,
   index: number,
@@ -53,7 +41,6 @@ function argumentValueType(
   )
 }
 
-/** One type argument treated as the dictionary itself, so it recurses. */
 function argumentValueTypes(
   reference: ESTree.TSTypeReference,
   index: number,
@@ -134,7 +121,6 @@ function referenceValueTypes(
   )
 }
 
-/** Every value type this type indexes to; empty when it is not a dictionary. */
 export function dictionaryValueTypes(
   type: ESTree.TSType,
   environment: TypeEnvironment,

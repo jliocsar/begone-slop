@@ -1,14 +1,3 @@
-/**
- * `Reflect.get` reads a property the type system cannot follow, so the result is
- * `any` and every downstream use is unchecked. Parse the dynamic input into a
- * named type first, then read the field by name.
- *
- * `Reflect['get'](…)` is the same call, so the computed form counts too. A local
- * `Reflect` does not — see `shared/reflect-method.ts`.
- *
- * Report-only — the replacement depends on what the value is supposed to be.
- */
-
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
 import { isGlobalReflectMethodCall } from '../shared/reflect-method.ts'

@@ -1,19 +1,3 @@
-/**
- * A catch handler whose whole body is `Effect.void` or `Effect.unit` deletes the
- * failure: the error never reaches a log, a fallback or the caller's error
- * channel, and the program continues as if nothing went wrong.
- *
- * Only the recovery combinators that take a handler are watched — `catch`,
- * `catchTag`, `catchTags`, `catchReason`, `catchReasons` — and the handler must
- * return void and NOTHING else. A second statement, or any other return value
- * (`Effect.succeed`, `Effect.logError`), is a deliberate recovery.
- *
- * Every report is anchored on the outer call, so a handler map that swallows
- * twice reports twice on the same span.
- *
- * Report-only — recovering meaningfully is a design decision.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
@@ -26,7 +10,7 @@ const CATCH_METHODS = new Set(['catch', 'catchTag', 'catchTags', 'catchReason', 
 const VOID_MEMBERS = new Set(['void', 'unit'])
 
 const MESSAGE =
-  'Do not silently swallow Effect errors with Effect.void or Effect.unit. Recover meaningfully, transform the error, or let it propagate.'
+  'Do not silently swallow an Effect error by returning a void effect from a catch handler. Recover meaningfully, transform the error, or let it propagate.'
 
 function isEffectMember(node: ESTree.Node, names: ReadonlySet<string>): boolean {
   if (node.type !== 'MemberExpression') {
@@ -41,10 +25,6 @@ function isEffectMember(node: ESTree.Node, names: ReadonlySet<string>): boolean 
   )
 }
 
-/**
- * A handler whose entire body is `Effect.void`/`Effect.unit`, written either as
- * a concise body or as a block holding one `return`.
- */
 function returnsOnlyVoid(node: ESTree.Node): boolean {
   if (node.type !== 'ArrowFunctionExpression' && node.type !== 'FunctionExpression') {
     return false
@@ -78,7 +58,6 @@ function returnsOnlyVoid(node: ESTree.Node): boolean {
   )
 }
 
-/** The swallowing handlers in one argument: the argument itself, or the values of a handler map. */
 function silentHandlers(argument: ESTree.Node): readonly ESTree.Node[] {
   const direct: readonly ESTree.Node[] = returnsOnlyVoid(argument) ? [argument] : []
 
@@ -112,7 +91,7 @@ export default Rule.define({
   name: 'no-silent-error-swallow',
   meta: Rule.meta({
     type: 'problem',
-    description: 'forbid catch handlers that swallow the error with Effect.void or Effect.unit',
+    description: 'forbid catch handlers that swallow the error by returning a void effect',
     messages: { silentErrorSwallow: MESSAGE },
   }),
   create: function* () {

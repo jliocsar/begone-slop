@@ -1,16 +1,3 @@
-/**
- * How weak a dictionary's value type is, answered without a type checker: an
- * escape hatch (`unknown`, `any`, `object`, `{}`) written directly, or reached
- * through a union, an intersection of only escape hatches, a transparent
- * wrapper, a generic argument or a local alias.
- *
- * The environment and the type primitives live in `./type-environment.ts`, the
- * value-type extraction in `./dictionary-values.ts`, and the widening
- * classification (`classifyWideningTarget`, `isKnownEvidenceExpression`) in
- * `./widening-targets.ts`. Classifiers return `Option`, so a caller stays on
- * the failure track rather than testing a null.
- */
-
 import * as Arr from 'effect/Array'
 import * as Option from 'effect/Option'
 import type { ESTree } from 'effect-oxlint'
@@ -37,7 +24,6 @@ function isNeverType(type: ESTree.TSType): boolean {
   return unwrapTransparentType(type).type === 'TSNeverKeyword'
 }
 
-/** `readonly brand?: never` carries no data, so a body of them is still empty. */
 function isEffectivelyEmptyMember(member: ESTree.TSSignature): boolean {
   if (member.type !== 'TSPropertySignature' || !member.optional) {
     return false
@@ -52,7 +38,6 @@ function isEffectivelyEmptyTypeLiteral(type: ESTree.TSTypeLiteral): boolean {
   return type.members.length === 0 || Arr.every(type.members, isEffectivelyEmptyMember)
 }
 
-/** Two declarations are declaration merging, so the shape is open by design. */
 function isEffectivelyEmptyInterface(
   declarations: readonly ESTree.TSInterfaceDeclaration[],
 ): boolean {
@@ -70,7 +55,6 @@ function isEffectivelyEmptyInterface(
   )
 }
 
-/** The escape hatches spelled directly, before any resolution. */
 function unsafeKeywordValue(type: ESTree.TSType): Option.Option<UnsafeValue> {
   if (type.type === 'TSUnknownKeyword') {
     return Option.some('unknown')
@@ -89,10 +73,6 @@ function unsafeKeywordValue(type: ESTree.TSType): Option.Option<UnsafeValue> {
     : Option.none()
 }
 
-/**
- * An intersection is only as weak as its weakest member: `unknown & Owner`
- * still names an owner, so it is safe. `any` poisons it regardless.
- */
 function unsafeIntersectionValue(
   members: readonly Option.Option<UnsafeValue>[],
 ): Option.Option<UnsafeValue> {
@@ -162,7 +142,6 @@ function unsafeReferenceValue(
   })
 }
 
-/** How weak this type is AS a value contract, resolved as far as the file allows. */
 function unsafeDirectValue(
   type: ESTree.TSType,
   environment: TypeEnvironment,
@@ -205,7 +184,6 @@ function unsafeDictionary(unsafeValue: UnsafeValue): UnsafeDictionary {
   return { kind: 'unsafe-dictionary', unsafeValue }
 }
 
-/** Whether a value type, taken on its own, is an escape hatch. */
 export function classifyUnsafeDictionaryValue(
   valueType: ESTree.TSType,
   environment: TypeEnvironment,
@@ -216,7 +194,6 @@ export function classifyUnsafeDictionaryValue(
   )
 }
 
-/** Whether a type is a dictionary whose DIRECT value type is an escape hatch. */
 export function classifyUnsafeDictionary(
   type: ESTree.TSType,
   environment: TypeEnvironment,

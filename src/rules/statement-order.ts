@@ -1,15 +1,3 @@
-/**
- * Fixed top-level order: imports > type-defs > constants > functions >
- * variables > modules > exports.
- *
- * Unranked, both to keep Effect idioms legal: a type alias containing `typeof`
- * (`type Agent = typeof Agent.Type` must sit by its const), and class
- * declarations (`Context.Service`, `Schema.TaggedErrorClass` are values the
- * following consts consume — classes-last would be a TDZ error).
- *
- * Report-only: it never moves code, so it cannot break ordering.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
@@ -26,10 +14,6 @@ const SECTION_NAMES = [
   'exports',
 ]
 
-/**
- * Node types whose rank never depends on the node's contents. Class
- * declarations are deliberately absent (unranked — see the amendments above).
- */
 const STATIC_RANKS = new Map([
   ['ImportDeclaration', 0],
   ['TSInterfaceDeclaration', 1],
@@ -41,10 +25,8 @@ const STATIC_RANKS = new Map([
   ['ExportAllDeclaration', 6],
 ])
 
-/** Cyclic (`parent`) and positional keys, which carry no type information. */
 const UNWALKED_KEYS = new Set(['parent', 'loc', 'range', 'start', 'end'])
 
-/** True when the (type-annotation) subtree contains a `typeof x` query. */
 // oxlint-disable-next-line begone-slop/no-unknown-parameters -- walks arbitrary AST fields; oxlint's node types do not model them
 function containsTypeQuery(value: unknown): boolean {
   if (Arr.isArray(value)) {
@@ -64,10 +46,6 @@ function containsTypeQuery(value: unknown): boolean {
     .some(([, child]) => containsTypeQuery(child))
 }
 
-/**
- * Rank a single top-level node. None for nodes we don't order (bare expression
- * statements, directives, and the Effect amendments above).
- */
 function rankOf(node: ESTree.Node): Option.Option<number> {
   if (node.type === 'TSTypeAliasDeclaration') {
     return containsTypeQuery(node.typeAnnotation) ? Option.none() : Option.some(1)
@@ -78,8 +56,6 @@ function rankOf(node: ESTree.Node): Option.Option<number> {
   }
 
   if (node.type === 'ExportNamedDeclaration') {
-    // `export const/function/type ...` -> rank by the inner decl.
-    // `export { a, b }` (no inner decl) -> the exports section.
     return node.declaration === null || node.declaration === undefined
       ? Option.some(6)
       : rankOf(node.declaration)
@@ -97,9 +73,6 @@ function outOfOrderDiagnostics(program: ESTree.Node): readonly Diagnostic.Diagno
     program.body.map((statement) => Option.map(rankOf(statement), (rank) => ({ statement, rank }))),
   )
 
-  // The running maximum, which `scan` seeds with its initial value — so entry i
-  // is the highest rank seen BEFORE statement i. A violating statement ranks
-  // below that maximum by definition, so it never moves it and needs no case.
   const highestBefore = Arr.scan(ranked, -1, (highest, { rank }) => Math.max(highest, rank))
 
   return Arr.zip(ranked, highestBefore)

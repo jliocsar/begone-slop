@@ -1,18 +1,3 @@
-/**
- * `const raw = parsed as unknown` then `raw as Parsed` throws the type away and
- * hand-writes it back. Nothing was checked in between, so the second spelling is
- * a claim rather than a fact.
- *
- * Only bindings whose original value carries SYNTACTIC evidence count: a
- * literal, an object, an arrow, another assertion, or an annotated binding it
- * was copied from. A call result carries none, so widening one is left alone —
- * this rule never guesses at a type it cannot read. The widening and the
- * assertion must also share a function, with the assertion second; anything
- * else is two authors rather than one round trip.
- *
- * Report-only — the fix is to keep the precise type, which only the author has.
- */
-
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import {
@@ -40,17 +25,8 @@ import {
   isDefinitelyObjectType,
   typesHaveSameSyntax,
 } from '../shared/broad-type.ts'
-import {
-  isTypeAssertion,
-  type TypeAssertion,
-  unwrapParenthesizedExpression,
-} from '../shared/type-assertion.ts'
+import { isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 
-/**
- * What the value was before the widening. `type` is none when the evidence is
- * the syntax itself — a literal names no type yet still proves the author knew
- * what they had.
- */
 type KnownValueEvidence = {
   readonly type: Option.Option<ESTree.TSType>
 }
@@ -62,7 +38,6 @@ type WidenedBinding = {
   readonly boundary: Option.Option<ESTree.Node>
 }
 
-/** Expressions that are their own evidence: written here, so typed exactly. */
 const SYNTACTIC_VALUE_EXPRESSIONS = new Set([
   'ArrayExpression',
   'ArrowFunctionExpression',
@@ -74,17 +49,13 @@ const SYNTACTIC_VALUE_EXPRESSIONS = new Set([
   'TemplateLiteral',
 ])
 
-const NAME_PLACEHOLDER = '{{name}}'
-
-const MESSAGE_TEMPLATE = `Binding "${NAME_PLACEHOLDER}" discards type evidence and later recreates it with an assertion. Keep the precise type from initialization through use; parse boundary input once.`
+const MESSAGE =
+  'Binding "{{name}}" discards type evidence and later recreates it with an assertion. Keep the precise type from initialization through use; parse boundary input once.'
 
 function assertionFromExpression(expression: ESTree.Expression): Option.Option<TypeAssertion> {
-  const unwrapped = unwrapParenthesizedExpression(expression)
-
-  return isTypeAssertion(unwrapped) ? Option.some(unwrapped) : Option.none()
+  return isTypeAssertion(expression) ? Option.some(expression) : Option.none()
 }
 
-/** An annotation is evidence only where it is visible and precise. */
 function annotationEvidence(
   identifier: ESTree.Node,
   annotation: ESTree.TSType,
@@ -102,29 +73,23 @@ function knownValueEvidence(
   boundary: Option.Option<ESTree.Node>,
   visitedVariables: ReadonlySet<Variable>,
 ): Option.Option<KnownValueEvidence> {
-  const unwrapped = unwrapParenthesizedExpression(expression)
-
-  // An assertion to a precise type IS the evidence; one to a broad type is the
-  // widening this rule is chasing, so it proves nothing.
-  if (isTypeAssertion(unwrapped)) {
-    return Option.isSome(broadTypeKind(unwrapped.typeAnnotation))
+  if (isTypeAssertion(expression)) {
+    return Option.isSome(broadTypeKind(expression.typeAnnotation))
       ? Option.none()
-      : Option.some({ type: Option.some(unwrapped.typeAnnotation) })
+      : Option.some({ type: Option.some(expression.typeAnnotation) })
   }
 
-  if (SYNTACTIC_VALUE_EXPRESSIONS.has(unwrapped.type)) {
+  if (SYNTACTIC_VALUE_EXPRESSIONS.has(expression.type)) {
     return Option.some({ type: Option.none() })
   }
 
-  if (unwrapped.type !== 'Identifier') {
+  if (expression.type !== 'Identifier') {
     return Option.none()
   }
 
-  return resolvedVariableForIdentifier(scopes, unwrapped).pipe(
+  return resolvedVariableForIdentifier(scopes, expression).pipe(
     Option.filter((variable) => !visitedVariables.has(variable)),
     Option.flatMap((variable) =>
-      // An annotation on the binding settles it either way — a widened one is
-      // not evidence, and the initializer behind it stops mattering.
       Option.match(annotatedBinding(variable), {
         onSome: ({ identifier, annotation }) =>
           annotationEvidence(identifier, annotation, boundary),
@@ -154,7 +119,6 @@ function initializerEvidence(
   )
 }
 
-/** The initializer's own widening assertion, when it has one. */
 function initializerWidening(
   init: ESTree.Expression,
 ): Option.Option<{ readonly assertion: TypeAssertion; readonly kind: BroadTypeKind }> {
@@ -184,7 +148,7 @@ function widenedFromInitializer(
   const widening = initializerWidening(init)
   const boundary = functionBoundary(declarator)
   const preWidening = Option.match(widening, {
-    onSome: ({ assertion }) => unwrapParenthesizedExpression(assertion.expression),
+    onSome: ({ assertion }) => assertion.expression,
     onNone: () => init,
   })
 
@@ -199,7 +163,6 @@ function widenedFromInitializer(
   )
 }
 
-/** A `const` whose declaration threw away a type the author demonstrably had. */
 function widenedBinding(
   variable: Variable,
   scopes: readonly OxlintScope[],
@@ -219,11 +182,6 @@ function widenedBinding(
   )
 }
 
-/**
- * Whether the assertion actually recovers something. Under a top type anything
- * precise does; under `object` or a broad record only a type that provably says
- * more, or the exact type the evidence already named.
- */
 function assertionIsNarrower(
   sourceText: string,
   widened: WidenedBinding,
@@ -254,7 +212,7 @@ function widenThenAssertDiagnostic(
     return Option.none()
   }
 
-  const expression = unwrapParenthesizedExpression(node.expression)
+  const { expression } = node
 
   if (expression.type !== 'Identifier') {
     return Option.none()
@@ -271,9 +229,10 @@ function widenThenAssertDiagnostic(
         assertionIsNarrower(sourceCode.text, widened, node.typeAnnotation),
     ),
     Option.map(() =>
-      Diagnostic.make({
+      Diagnostic.fromId({
         node,
-        message: MESSAGE_TEMPLATE.replace(NAME_PLACEHOLDER, expression.name),
+        messageId: 'widenThenAssert',
+        data: { name: expression.name },
       }),
     ),
   )
@@ -284,6 +243,7 @@ export default Rule.define({
   meta: Rule.meta({
     type: 'problem',
     description: 'forbid asserting a widened const binding back to a narrower type',
+    messages: { widenThenAssert: MESSAGE },
   }),
   create: function* () {
     const context = yield* RuleContext

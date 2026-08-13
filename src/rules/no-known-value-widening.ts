@@ -1,23 +1,3 @@
-/**
- * A value written right here — an object literal, an array, a function, a `new`
- * — already carries its own shape. Annotating what it flows into with something
- * broad (`unknown`, `object`, `Record<string, Command>`, an anonymous object
- * type) throws that shape away at the one place it was free, and every reader
- * downstream pays for it. Keep inference, check the shape with `satisfies`, or
- * name the contract.
- *
- * The accumulator idiom survives: an EMPTY object literal flowing into an open
- * dictionary or a generic container (`const commands: Record<string, Command> =
- * {}`) declares an empty map rather than discarding a shape. A POPULATED one
- * (`= { start: command }`) discards one.
- *
- * Named targets are left alone — an interface or a non-index object alias names
- * the contract, which is the fix, not the defect. So are `satisfies` and `as
- * const`: neither widens.
- *
- * Report-only — the replacement contract is the author's domain knowledge.
- */
-
 import * as Effect from 'effect/Effect'
 import * as Option from 'effect/Option'
 import * as Ref from 'effect/Ref'
@@ -45,22 +25,17 @@ import {
 } from '../shared/type-environment.ts'
 import { classifyWideningTarget, type WideningTarget } from '../shared/widening-targets.ts'
 
-/** One diagnose pass over a node, given what the file's types resolve to. */
 type Diagnose = (
   sourceCode: OxlintSourceCode,
   node: ESTree.Node,
   environment: TypeEnvironment,
 ) => Option.Option<Diagnostic.Diagnostic>
 
-const TARGET_PLACEHOLDER = '{{target}}'
-
-const SUBJECT_PLACEHOLDER = '{{subject}}'
-
-const MESSAGE_TEMPLATE = `The explicit ${TARGET_PLACEHOLDER} type on ${SUBJECT_PLACEHOLDER} discards known type evidence. Keep inference, validate with \`satisfies\`, or use a named owner contract.`
+const MESSAGE =
+  'The explicit {{target}} type on {{subject}} discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.'
 
 const ASSERTION_SUBJECT = 'assertion'
 
-/** Targets whose whole purpose is to be filled in later, so `{}` is honest. */
 const ACCUMULATOR_TARGET_KINDS = new Set(['generic container', 'open dictionary'])
 
 function annotationTarget(
@@ -79,7 +54,6 @@ function returnTypeTarget(
   return Option.flatMap(owner, (fn) => annotationTarget(fn.returnType, environment))
 }
 
-/** The one report a flow site can produce, or none when nothing is discarded. */
 function wideningDiagnostic(
   sourceCode: OxlintSourceCode,
   expression: ESTree.Expression,
@@ -95,18 +69,15 @@ function wideningDiagnostic(
       hasKnownEvidence(sourceCode.scopeManager.scopes, expression, new Set<Variable>()),
     ),
     Option.map((destination) =>
-      Diagnostic.make({
+      Diagnostic.fromId({
         node: expression,
-        message: MESSAGE_TEMPLATE.replace(TARGET_PLACEHOLDER, destination.kind).replace(
-          SUBJECT_PLACEHOLDER,
-          subject,
-        ),
+        messageId: 'knownValueWidening',
+        data: { subject, target: destination.kind },
       }),
     ),
   )
 }
 
-/** `const commands: Record<string, Command> = { start: command }`. */
 function bindingDiagnostic(
   sourceCode: OxlintSourceCode,
   node: ESTree.Node,
@@ -128,7 +99,6 @@ function bindingDiagnostic(
   )
 }
 
-/** A class field, plain or `accessor`, initialized in its declaration. */
 function propertyDiagnostic(
   sourceCode: OxlintSourceCode,
   node: ESTree.Node,
@@ -150,7 +120,6 @@ function propertyDiagnostic(
   )
 }
 
-/** `let commands: Record<string, Command>` filled in on a later line. */
 function assignmentDiagnostic(
   sourceCode: OxlintSourceCode,
   node: ESTree.Node,
@@ -178,7 +147,6 @@ function assignmentDiagnostic(
   )
 }
 
-/** The single declaration an assigned name resolves to, when it has one. */
 function annotatedBindingOfReference(
   sourceCode: OxlintSourceCode,
   identifier: ESTree.IdentifierReference,
@@ -213,7 +181,6 @@ function returnDiagnostic(
   )
 }
 
-/** `const make = (): Record<string, Command> => ({ start: command })`. */
 function expressionBodyDiagnostic(
   sourceCode: OxlintSourceCode,
   node: ESTree.Node,
@@ -237,11 +204,6 @@ function expressionBodyDiagnostic(
   )
 }
 
-/**
- * `{ … } as Record<string, Command>`. Only the innermost assertion of a chain
- * reports: an outer one widens an assertion, which is a different complaint and
- * a different rule.
- */
 function assertionDiagnostic(
   sourceCode: OxlintSourceCode,
   node: ESTree.Node,
@@ -264,11 +226,10 @@ export default Rule.define({
   meta: Rule.meta({
     type: 'problem',
     description: 'forbid widening a value of known shape into a broad annotation',
+    messages: { knownValueWidening: MESSAGE },
   }),
   create: function* () {
     const context = yield* RuleContext
-    // Built once per file, so an annotation naming an alias declared below it
-    // still resolves.
     const environment = yield* Ref.make(EMPTY_TYPE_ENVIRONMENT)
 
     const report = (diagnose: Diagnose) => (node: ESTree.Node) =>

@@ -1,15 +1,3 @@
-/**
- * A run of consecutive `expect(...)` statements is one block: blank line around
- * it, none inside it.
- *
- * A comment on its own line between two assertions is exempt, along with the
- * spacing around it — it is a real reason to break the block, and without the
- * exemption the dense-block fixer deleted the note. A trailing comment is part
- * of its line, so the gap below it still closes.
- *
- * Fixable both ways.
- */
-
 import * as Arr from 'effect/Array'
 import * as Effect from 'effect/Effect'
 import { pipe } from 'effect/Function'
@@ -22,7 +10,8 @@ import {
   statementsOf,
 } from '../shared/source-position.ts'
 
-/** The root of a call/member chain: `expect(x).resolves.toBe(y)` → `expect`. */
+const EXPECT_IDENTIFIER = 'expect'
+
 function chainRoot(expression: ESTree.Expression): ESTree.Expression {
   if (expression.type === 'AwaitExpression') {
     return chainRoot(expression.argument)
@@ -46,17 +35,15 @@ function isExpectStatement(statement: ESTree.Node): boolean {
 
   const root = chainRoot(statement.expression)
 
-  return root.type === 'Identifier' && root.name === 'expect'
+  return root.type === 'Identifier' && root.name === EXPECT_IDENTIFIER
 }
 
-/** Inside the block: consecutive assertions, so close any gap between them. */
 function denseGap(
   sourceCode: OxlintSourceCode,
   previous: ESTree.Node,
   current: ESTree.Node,
 ): Option.Option<Diagnostic.Diagnostic> {
   const comments = sourceCode.getCommentsBefore(current)
-  // A note on its own line is content, not spacing.
   const introduced = comments.some((comment) => comment.loc.start.line > previous.loc.end.line)
 
   return pipe(
@@ -65,8 +52,6 @@ function denseGap(
     Option.map(() =>
       Diagnostic.withFix(
         Diagnostic.fromId({ node: current, messageId: 'denseExpectBlock' }),
-        // Replace the whole gap so several blank lines collapse at once,
-        // starting after any trailing comment on the previous line.
         (fixer) =>
           fixer.replaceTextRange(
             [comments.at(-1)?.range[1] ?? previous.range[1], current.range[0]],
@@ -77,7 +62,6 @@ function denseGap(
   )
 }
 
-/** The block's edge: exactly one side is an assertion, so fence it off. */
 function fenceGap(
   previous: ESTree.Node,
   current: ESTree.Node,
@@ -94,7 +78,6 @@ function fenceGap(
   )
 }
 
-/** None where neither side is an assertion — the vertical-spacing rules own it. */
 function gapDiagnostic(
   sourceCode: OxlintSourceCode,
   previous: ESTree.Node,

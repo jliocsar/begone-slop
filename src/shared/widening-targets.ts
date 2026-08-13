@@ -1,14 +1,3 @@
-/**
- * How wide the type a value is being assigned into is, and whether the value
- * being assigned carried visible evidence of its own shape.
- *
- * A NAMED object alias without an index signature (`type Commands = { readonly
- * start: Command }`) is deliberately not a target: it names a concrete shape,
- * so assigning into it keeps the contract. An ANONYMOUS object literal type is,
- * because nothing named it. That asymmetry is why the alias body is classified
- * by its own stricter pass rather than by the entry point.
- */
-
 import * as Arr from 'effect/Array'
 import * as Option from 'effect/Option'
 import type { ESTree } from 'effect-oxlint'
@@ -35,10 +24,8 @@ export type WideningTarget = {
   readonly kind: WideningTargetKind
 }
 
-/** Keys wide enough that a mapping over them is a dictionary, not a shape. */
 const BROAD_KEY_KEYWORDS = new Set(['TSStringKeyword', 'TSNumberKeyword', 'TSSymbolKeyword'])
 
-/** Expression kinds whose shape the reader can see where they are written. */
 const EVIDENCE_EXPRESSIONS = new Set([
   'ArrayExpression',
   'ArrowFunctionExpression',
@@ -88,7 +75,6 @@ function isBroadMappedKey(
   )
 }
 
-/** The width an alias BODY carries — stricter than the entry point above. */
 function classifyAliasBroadTarget(
   type: ESTree.TSType,
   environment: TypeEnvironment,
@@ -166,7 +152,6 @@ function aliasBroadTargetOfName(
   )
 }
 
-/** An applied generic alias that indexes: the container, not what it holds. */
 function genericContainerTarget(
   alias: ESTree.TSTypeAliasDeclaration,
   reference: ESTree.TSTypeReference,
@@ -205,7 +190,6 @@ function wideningTargetOfName(
   )
 }
 
-/** How wide the type a value is being assigned into is. */
 export function classifyWideningTarget(
   type: ESTree.TSType,
   environment: TypeEnvironment,
@@ -239,14 +223,8 @@ export function classifyWideningTarget(
   )
 }
 
-/**
- * An expression whose shape the reader can see where it is written: a literal,
- * a constructor call, a function. Widening one of these into an open target
- * discards evidence that was right there.
- */
 export function isKnownEvidenceExpression(expression: ESTree.Expression): boolean {
   if (
-    expression.type === 'ParenthesizedExpression' ||
     expression.type === 'TSAsExpression' ||
     expression.type === 'TSTypeAssertion' ||
     expression.type === 'TSNonNullExpression' ||

@@ -1,25 +1,7 @@
-/**
- * A type assertion overrides the checker, so the invariant that makes it sound
- * lives only in the author's head unless a `SAFETY:` comment writes it down.
- *
- * The comment may sit immediately before the assertion or before the statement
- * that contains it: the search walks up from the assertion and stops at the
- * first comment-owning statement (expression, property, return, throw,
- * variable) or at the top level — checking that level before it stops. A
- * trailing comment is not a justification: it must end before the assertion
- * begins. `as const` is exempt; it narrows instead of overriding.
- *
- * Report-only — only the author knows the invariant.
- */
-
 import * as Effect from 'effect/Effect'
 import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
 import { isConstAssertion, isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 
-/**
- * The statements a comment can be read as belonging to. Reaching one ends the
- * walk: a comment further up is about something else.
- */
 const COMMENT_OWNER_KINDS = new Set([
   'ExpressionStatement',
   'PropertyDefinition',
@@ -48,8 +30,6 @@ function hasSafetyComment(
 
   const { parent } = current
 
-  // `parent` is null only on `Program`, which the top-level stop below reaches
-  // first — the check is what convinces the checker of that.
   if (COMMENT_OWNER_KINDS.has(current.type) || parent === null || parent.type === 'Program') {
     return false
   }
