@@ -26,7 +26,7 @@ jobs:
       - run: bun run fmt:check
 
   installable:
-    name: installs and runs under node
+    name: installs from a tarball and runs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,12 +35,19 @@ jobs:
           bun-version: latest
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: lts/*
 
       - run: bun install --frozen-lockfile
 
       - name: Pack the tarball
         run: echo "TARBALL=$(pwd)/$(npm pack --silent)" >> "$GITHUB_ENV"
+
+      - name: The tarball ships compiled ESM, never source
+        run: |
+          tar -tzf "$TARBALL" > contents.txt
+          cat contents.txt
+          ! grep -qE '\.tsx?$' contents.txt
+          grep -q 'package/dist/index.mjs' contents.txt
 
       - name: Install it into a project that is not this one
         working-directory: ${{ runner.temp }}
