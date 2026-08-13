@@ -85,6 +85,25 @@ const OxlintReport = Schema.Struct({
 
 const decodeReport = SchemaParser.decodeUnknownSync(OxlintReport)
 
+const StatementSelector = Schema.Union([Schema.String, Schema.Array(Schema.String)])
+
+const ShippedPreset = Schema.Struct({
+  rules: Schema.Struct({
+    'begone-slop/padding-line-between-statements': Schema.Tuple([
+      Schema.String,
+      Schema.Array(
+        Schema.Struct({
+          blankLine: Schema.String,
+          prev: StatementSelector,
+          next: StatementSelector,
+        }),
+      ),
+    ]),
+  }),
+})
+
+const decodeShippedPreset = SchemaParser.decodeUnknownSync(ShippedPreset)
+
 const RULES_WITH_VALID_FIXTURE = new Set(
   globalThis.Array.from(new Bun.Glob('*.ts').scanSync({ cwd: VALID_FIXTURES }), (entry) =>
     entry.replace(/\.ts$/u, ''),
@@ -138,6 +157,13 @@ for (const rule of RULES_WITH_VALID_FIXTURE) {
     expect(reported).toEqual([])
   })
 }
+
+test('the padding spec under test is the one the preset ships', async () => {
+  const preset = decodeShippedPreset(await Bun.file(`${import.meta.dir}/../preset.json`).json())
+  const shipped = preset.rules['begone-slop/padding-line-between-statements'][1]
+
+  expect(shipped).toEqual(PADDING_SPEC)
+})
 
 test('every rule the plugin defines is covered by both halves', () => {
   const defined = new Set(Object.keys(plugin.rules))
