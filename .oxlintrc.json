@@ -1,0 +1,80 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+
+  "extends": ["./preset.json"],
+
+  "plugins": ["typescript", "promise"],
+
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error"
+  },
+
+  "ignorePatterns": ["**/dist/**", "**/*.d.ts", "test/fixtures/**"],
+
+  "jsPlugins": ["./src/index.ts"],
+
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "regex": "^effect$|^effect/testing$|^effect/unstable/[a-z0-9-]+$",
+            "allowTypeImports": true,
+            "message": "Import the leaf module, not the barrel: `effect/Effect`, `effect/unstable/schema/Schema`."
+          }
+        ]
+      }
+    ],
+
+    "promise/prefer-await-to-then": "error",
+
+    "id-length": ["error", { "min": 2, "exceptions": ["i", "j"], "properties": "never" }],
+
+    "curly": ["error", "all"],
+    "no-else-return": ["error", { "allowElseIf": false }],
+    "no-nested-ternary": "error",
+    "prefer-template": "error",
+    "complexity": ["error", 15],
+    "max-lines-per-function": [
+      "error",
+      { "max": 200, "skipBlankLines": true, "skipComments": true, "IIFEs": true }
+    ],
+    "require-yield": "off",
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+
+    "typescript/prefer-readonly-parameter-types": "off",
+    "typescript/array-type": ["error", { "default": "array", "readonly": "array" }],
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/consistent-type-imports": [
+      "error",
+      { "prefer": "type-imports", "fixStyle": "separate-type-imports" }
+    ],
+    "typescript/restrict-template-expressions": [
+      "error",
+      { "allowNumber": true, "allowBoolean": true }
+    ]
+  },
+
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/test/**/*.ts"],
+      "rules": {
+        "begone-slop/expect-padding": "error",
+        "max-lines-per-function": "off",
+        "typescript/no-non-null-assertion": "off",
+        "typescript/no-confusing-void-expression": "off",
+        "typescript/no-unnecessary-type-conversion": "off"
+      }
+    }
+  ]
+}
