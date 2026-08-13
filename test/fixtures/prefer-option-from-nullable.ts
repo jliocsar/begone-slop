@@ -1,0 +1,6 @@
+const byStrictTest = value !== null ? Option.some(value) : Option.none()
+const byLooseTest = value != null ? Option.some(value) : Option.none()
+const byNullOnTheLeft = null !== value ? Option.some(value) : Option.none()
+const byTypeArguments = value !== null ? Option.some<number>(value) : Option.none<number>()
+const byInstantiationCallee = value !== null ? Option.some(value) : (Option.none<number>)()
+const byMemberSubject = user.name !== null ? Option.some(user.name) : Option.none()

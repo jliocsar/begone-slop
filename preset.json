@@ -1,0 +1,62 @@
+{
+  "plugins": [],
+
+  "rules": {
+    "begone-slop/statement-order": "error",
+    "begone-slop/no-tag-access": "error",
+    "begone-slop/no-shadowed-error-field": "error",
+
+    "begone-slop/no-switch": "error",
+    "begone-slop/no-try-catch": "error",
+    "begone-slop/no-in-operator": "error",
+    "begone-slop/no-service-option": "error",
+    "begone-slop/no-effect-asvoid": "error",
+    "begone-slop/no-disable-validation": "error",
+    "begone-slop/no-banned-type-assertions": "error",
+    "begone-slop/no-optional-function-parameters": "error",
+    "begone-slop/no-sql-type-parameter": "error",
+    "begone-slop/pipe-max-arguments": "error",
+    "begone-slop/no-reflect-get": "error",
+    "begone-slop/no-reflect-apply": "error",
+    "begone-slop/no-conditional-empty-object-spread": "error",
+
+    "begone-slop/require-safety-comment-for-type-assertion": "error",
+    "begone-slop/no-chained-type-assertions": "error",
+    "begone-slop/no-unknown-parameters": "error",
+    "begone-slop/no-unknown-returns": "error",
+    "begone-slop/no-unknown-type-aliases": "error",
+    "begone-slop/no-silent-error-swallow": "error",
+    "begone-slop/no-shadowed-standard-array-static": "error",
+    "begone-slop/no-nested-effect-array-methods": "error",
+    "begone-slop/prefer-option-from-nullable": "error",
+    "begone-slop/prefer-effect-match": "error",
+
+    "begone-slop/no-cascading-layer-provide": "error",
+    "begone-slop/no-nested-layer-provide": "error",
+    "begone-slop/no-reexport-only-modules": "error",
+
+    "begone-slop/no-unsafe-dictionary-type": "error",
+    "begone-slop/no-known-value-widening": "error",
+    "begone-slop/no-widen-then-assert": "error",
+    "begone-slop/no-object-parameters": "error",
+    "begone-slop/no-module-mocking": "error",
+
+    "begone-slop/padding-line-between-statements": [
+      "error",
+      [
+        { "blankLine": "always", "prev": "*", "next": "return" },
+        { "blankLine": "always", "prev": "*", "next": "block-like" },
+        { "blankLine": "always", "prev": "block-like", "next": "*" },
+        { "blankLine": "always", "prev": "*", "next": ["function", "class"] },
+        { "blankLine": "always", "prev": ["function", "class"], "next": "*" },
+        { "blankLine": "always", "prev": "import", "next": "*" },
+        { "blankLine": "any", "prev": "import", "next": "import" },
+        {
+          "blankLine": "any",
+          "prev": ["singleline-const", "singleline-let"],
+          "next": ["singleline-const", "singleline-let"]
+        }
+      ]
+    ]
+  }
+}
