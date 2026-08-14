@@ -1,6 +1,6 @@
 {
   "$schema": "http://json.schemastore.org/package",
-  "name": "begone-slop",
+  "name": "@jliocsar/begone-slop",
   "version": "0.1.0",
   "description": "Oxlint rules that reject low-evidence TypeScript and non-idiomatic Effect",
   "keywords": [

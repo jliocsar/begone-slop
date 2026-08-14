@@ -56,8 +56,8 @@ jobs:
         run: |
           cat > .oxlintrc.json <<'JSON'
           {
-            "extends": ["./node_modules/begone-slop/preset.json"],
-            "jsPlugins": ["begone-slop"]
+            "extends": ["./node_modules/@jliocsar/begone-slop/preset.json"],
+            "jsPlugins": ["@jliocsar/begone-slop"]
           }
           JSON
           echo 'export const widened = JSON.parse("{}") as any' > bad.ts

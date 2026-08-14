@@ -15,6 +15,9 @@
         "tsdown": "^0.22.0",
         "typescript": "^5.9",
       },
+      "peerDependencies": {
+        "oxlint": ">=1.77.0",
+      },
     },
   },
   "packages": {

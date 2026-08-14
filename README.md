@@ -10,7 +10,7 @@ that are easy to reach for and hard to walk back.
 ## Install
 
 ```sh
-npm i -D begone-slop oxlint
+npm i -D @jliocsar/begone-slop oxlint
 ```
 
 ## Use
@@ -18,11 +18,11 @@ npm i -D begone-slop oxlint
 ```ts
 // oxlint.config.ts
 import { defineConfig } from 'oxlint'
-import preset from 'begone-slop/preset.json' with { type: 'json' }
+import preset from '@jliocsar/begone-slop/preset.json' with { type: 'json' }
 
 export default defineConfig({
   extends: [preset],
-  jsPlugins: ['begone-slop'],
+  jsPlugins: ['@jliocsar/begone-slop'],
 })
 ```
 
@@ -38,21 +38,27 @@ Node LTS or Bun. On anything older, use the JSON config below.
 ```jsonc
 // .oxlintrc.json
 {
-  "extends": ["./node_modules/begone-slop/preset.json"],
-  "jsPlugins": ["begone-slop"],
+  "extends": ["./node_modules/@jliocsar/begone-slop/preset.json"],
+  "jsPlugins": ["@jliocsar/begone-slop"],
 }
 ```
 
 Equivalent, and loaded by any runtime. The one wart: **`extends` here does not take a package
-specifier.** It resolves relative to the config file, so `"begone-slop/preset.json"` would silently
-mean `./begone-slop/preset.json` and fail — hence the explicit path. `jsPlugins` has no such
-limitation. Both behaviours are measured.
+specifier.** It resolves relative to the config file, so `"@jliocsar/begone-slop/preset.json"` would
+silently mean `./@jliocsar/begone-slop/preset.json` and fail — hence the explicit path. `jsPlugins`
+has no such limitation. Both behaviours are measured.
+
+### The package is scoped, the rules are not
+
+The package installs as `@jliocsar/begone-slop`, but every rule is named `begone-slop/…` — a plugin
+declares its own name independently of the package that ships it. So you reference the scope when
+installing and loading, and never again after that.
 
 Prefer to pick your own rules? Skip `extends` and enable them by name:
 
 ```jsonc
 {
-  "jsPlugins": ["begone-slop"],
+  "jsPlugins": ["@jliocsar/begone-slop"],
   "rules": {
     "begone-slop/no-tag-access": "error",
     "begone-slop/require-safety-comment-for-type-assertion": "error",
