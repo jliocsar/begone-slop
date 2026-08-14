@@ -10,5 +10,12 @@
   "arrowParens": "always",
   "sortPackageJson": true,
 
-  "ignorePatterns": ["test/fixtures", "**/node_modules", "**/dist", "bun.lock", "tmp"]
+  "ignorePatterns": [
+    "test/fixtures",
+    "**/node_modules",
+    "**/dist",
+    "bun.lock",
+    "CHANGELOG.md",
+    "tmp"
+  ]
 }
