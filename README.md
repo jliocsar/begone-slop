@@ -30,8 +30,16 @@ That is the whole setup. `extends` pulls in the 37 rules the preset enables, and
 the plugin itself. Both resolve as ordinary module specifiers, because in a TypeScript config
 `extends` takes config _objects_ and your runtime does the resolving.
 
-This file is discovered automatically, but it has to be loaded as TypeScript — so it needs a current
-Node LTS or Bun. On anything older, use the JSON config below.
+This file is discovered automatically, but something has to import TypeScript to read it. Node 22.18
+or newer can. Node 20 cannot, whatever oxlint's own error message claims about it — measured on
+20.19.4, where the flag it would need is not even a recognised option. Running oxlint under Bun
+works on any of them:
+
+```sh
+bunx --bun oxlint
+```
+
+If neither suits you, the JSON config below has no runtime requirement at all.
 
 ### The JSON config
 
@@ -144,8 +152,9 @@ with the code above it. It leaves `SAFETY:` comments and tooling directives (`ox
 
 ## Requirements
 
-- **oxlint** `^1.77.0`, as a peer of your project.
-- **Node** — a current LTS. The package is compiled ESM and nothing older is tested.
+- **oxlint** `>=1.77.0`, as a peer of your project.
+- **Node** — any current LTS runs the plugin, which ships as compiled ESM. A TypeScript config
+  needs 22.18 or newer, or Bun.
 - `effect` ships as a dependency, so there is nothing else to install.
 
 ## Caveat
