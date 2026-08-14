@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/jliocsar/begone-slop/compare/v0.1.2...v0.1.3) (2026-08-14)
+
+
+### Bug Fixes
+
+* **ci:** keep the existing tag names under the manifest config ([01815cb](https://github.com/jliocsar/begone-slop/commit/01815cbd9aba11c099e36b08663c3ceefd42982b))
+
 ## [0.1.2](https://github.com/jliocsar/begone-slop/compare/v0.1.1...v0.1.2) (2026-08-14)
 
 
