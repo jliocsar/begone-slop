@@ -1,9 +1,9 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
 
-  "extends": ["./preset.json"],
+  "extends": ["./node_modules/@effect/tsgo/oxlint-presets/recommended.json", "./preset.json"],
 
-  "plugins": ["typescript", "promise"],
+  "plugins": ["typescript", "promise", "effecttsgo"],
 
   "categories": {
     "correctness": "error",
@@ -70,6 +70,7 @@
       "files": ["**/*.test.ts", "**/test/**/*.ts"],
       "rules": {
         "begone-slop/expect-padding": "error",
+        "effecttsgo/async-function": "off",
         "max-lines-per-function": "off",
         "typescript/no-non-null-assertion": "off",
         "typescript/no-confusing-void-expression": "off",

@@ -49,6 +49,16 @@ an instance of. Naming a third-party API or a rule of ours is fine.
 - The linter's JS plugin support is alpha and explicitly not semver-bound, per its own shipped
   configuration schema. Every rule here rides on it, so a linter upgrade can break them without a
   major version bump; the rule suite is what catches that.
+- This package lints itself with the Effect toolchain's own type-aware rules, which is the only way
+  a plugin about idiomatic Effect can claim to follow its own advice. Adopting them cost four
+  reports, all of one rule and all in the rule tests, where the harness shells out to the linter and
+  awaits a promise rather than running an Effect — an override scopes that rule away from test files
+  (measured).
+- The compiler and the linter are both pinned exactly, with no caret range. The Effect toolchain
+  ships prebuilt artifacts for specific builds of each and fails outright with a missing-packaged-
+  artifact error against any other one; the toolchain version in use covers two linter releases
+  only, so a caret range picks up a third on any install that does not reuse the lockfile (measured
+  in a clean checkout). The three bump together or not at all.
 
 ## What the parser actually produces
 
