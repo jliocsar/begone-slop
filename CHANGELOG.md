@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/jliocsar/begone-slop/compare/v0.1.3...v0.1.4) (2026-08-15)
+
+
+### Features
+
+* publish the house tsconfig as ./tsconfig ([fe8fa42](https://github.com/jliocsar/begone-slop/commit/fe8fa42886f20f277e1d2e1d213d897696a30bd2))
+
 ## [0.1.3](https://github.com/jliocsar/begone-slop/compare/v0.1.2...v0.1.3) (2026-08-14)
 
 
