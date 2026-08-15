@@ -150,6 +150,34 @@ name, and that durable knowledge belongs in a document rather than a line that d
 with the code above it. It leaves `SAFETY:` comments and tooling directives (`oxlint-disable`,
 `@ts-expect-error`, triple-slash references, shebangs) alone.
 
+## The tsconfig
+
+The compiler settings the rules assume ship alongside them:
+
+```jsonc
+// tsconfig.json
+{
+  "extends": "@jliocsar/begone-slop/tsconfig",
+  "include": ["src/**/*.ts"],
+}
+```
+
+Unlike oxlint's `extends`, TypeScript's resolves a package specifier — this one goes through the
+`exports` map, so the subpath has no `.json` on it (measured under TypeScript 7).
+
+It is the [Effect recommendation](https://www.effect.solutions/tsconfig) as far as a bundler-driven
+project can take it: `strict` plus `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
+`noImplicitOverride`, `noUnusedLocals`, `noUnusedParameters`, `erasableSyntaxOnly` and
+`noFallthroughCasesInSwitch`, on `ESNext` with `bundler` resolution.
+
+Two things to know before extending it:
+
+- **It sets `noEmit`.** The assumption is that a bundler emits and the compiler only checks — which
+  is also what makes `allowImportingTsExtensions` legal. Override both if you emit with `tsc`.
+- **It configures the Effect language service with `diagnostics: false`.** Effect diagnostics come
+  from the `effecttsgo` oxlint rules instead, and leaving both on reports every one of them twice.
+  The block inherits through `extends`, and a child config can turn it back on (measured).
+
 ## Requirements
 
 - **oxlint** `>=1.77.0`, as a peer of your project.
