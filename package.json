@@ -25,6 +25,7 @@
   "files": [
     "dist",
     "preset.json",
+    "tsconfig.base.json",
     "README.md",
     "LICENSE"
   ],
@@ -35,7 +36,8 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
-    "./preset.json": "./preset.json"
+    "./preset.json": "./preset.json",
+    "./tsconfig": "./tsconfig.base.json"
   },
   "publishConfig": {
     "access": "public"

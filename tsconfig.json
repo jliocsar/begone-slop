@@ -1,27 +1,12 @@
 {
-  "$schema": "http://json.schemastore.org/tsconfig",
+  "$schema": "https://raw.githubusercontent.com/Effect-TS/language-service/refs/heads/main/schema.json",
+
+  "extends": "./tsconfig.base.json",
 
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["test/fixtures/**", "dist"],
 
   "compilerOptions": {
-    "target": "ESNext",
-    "lib": ["ESNext"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "moduleDetection": "force",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-
     "types": ["bun"]
   }
 }
