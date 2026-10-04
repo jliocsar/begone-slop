@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/jliocsar/begone-slop/compare/v0.2.3...v0.2.4) (2026-10-04)
+
+
+### Bug Fixes
+
+* **no-nested-effect-array-methods:** only flag nesting pipe can untangle ([#15](https://github.com/jliocsar/begone-slop/issues/15)) ([0d82efe](https://github.com/jliocsar/begone-slop/commit/0d82efee2d019e051b1b90567d72883fe398ead5))
+
 ## [0.2.3](https://github.com/jliocsar/begone-slop/compare/v0.2.2...v0.2.3) (2026-10-04)
 
 
