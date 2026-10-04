@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/jliocsar/begone-slop/compare/v0.2.8...v0.2.9) (2026-10-04)
+
+
+### Miscellaneous Chores
+
+* release 0.2.9 ([ba3f9fb](https://github.com/jliocsar/begone-slop/commit/ba3f9fb9433c893dcd3ba69b8ba56e989b429503))
+
 ## [0.2.8](https://github.com/jliocsar/begone-slop/compare/v0.2.7...v0.2.8) (2026-10-04)
 
 
