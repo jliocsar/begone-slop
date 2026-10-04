@@ -3,7 +3,20 @@ import { defineRule } from '@oxlint/plugins'
 
 const EFFECT = 'Effect'
 
-const CATCH_METHODS = new Set(['catch', 'catchTag', 'catchTags', 'catchReason', 'catchReasons'])
+const CATCH_METHODS = new Set([
+  'catch',
+  'catchCause',
+  'catchCauseFilter',
+  'catchCauseIf',
+  'catchDefect',
+  'catchEager',
+  'catchFilter',
+  'catchIf',
+  'catchReason',
+  'catchReasons',
+  'catchTag',
+  'catchTags',
+])
 
 const VOID_MEMBERS = new Set(['void', 'unit'])
 
@@ -89,8 +102,8 @@ export default defineRule({
           return
         }
 
-        node.arguments.flatMap(silentHandlers).forEach(() => {
-          context.report({ node, messageId: 'silentErrorSwallow' })
+        node.arguments.flatMap(silentHandlers).forEach((handler) => {
+          context.report({ node: handler, messageId: 'silentErrorSwallow' })
         })
       },
     }

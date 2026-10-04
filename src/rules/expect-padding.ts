@@ -3,6 +3,7 @@ import { defineRule } from '@oxlint/plugins'
 import {
   adjacentPairs,
   blankLinesBetween,
+  lineBreakOf,
   lineStartRange,
   statementsOf,
 } from '../shared/source-position.ts'
@@ -47,18 +48,25 @@ function denseGap(
     return undefined
   }
 
+  const gapStart = comments.at(-1)?.range[1] ?? previous.range[1]
+  const [currentLineStart] = lineStartRange(current)
+
   return {
     node: current,
     messageId: 'denseExpectBlock',
     fix: (fixer) =>
       fixer.replaceTextRange(
-        [comments.at(-1)?.range[1] ?? previous.range[1], current.range[0]],
-        `\n${' '.repeat(current.loc.start.column)}`,
+        [gapStart, currentLineStart],
+        lineBreakOf(sourceCode.text.slice(gapStart, currentLineStart)),
       ),
   }
 }
 
-function fenceGap(previous: ESTree.Node, current: ESTree.Node): Diagnostic | undefined {
+function fenceGap(
+  sourceCode: SourceCode,
+  previous: ESTree.Node,
+  current: ESTree.Node,
+): Diagnostic | undefined {
   if (blankLinesBetween(previous, current) !== 0) {
     return undefined
   }
@@ -66,7 +74,8 @@ function fenceGap(previous: ESTree.Node, current: ESTree.Node): Diagnostic | und
   return {
     node: current,
     messageId: 'fenceExpectBlock',
-    fix: (fixer) => fixer.insertTextBeforeRange(lineStartRange(current), '\n'),
+    fix: (fixer) =>
+      fixer.insertTextBeforeRange(lineStartRange(current), lineBreakOf(sourceCode.text)),
   }
 }
 
@@ -82,7 +91,7 @@ function gapDiagnostic(
     return denseGap(sourceCode, previous, current)
   }
 
-  return previousIsExpect || currentIsExpect ? fenceGap(previous, current) : undefined
+  return previousIsExpect || currentIsExpect ? fenceGap(sourceCode, previous, current) : undefined
 }
 
 export default defineRule({

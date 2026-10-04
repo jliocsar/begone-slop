@@ -29,3 +29,12 @@ function lambdaOuter() {
     return lambdaValue as string
   }
 }
+type Label = string
+interface Indexed { readonly [key: string]: number }
+type Looping = Looping
+const muValue: object = { first: 1 }
+const muNarrow = muValue as Label
+const nuValue: Record<string, unknown> = { first: 1 }
+const nuNarrow = nuValue as Imported
+const xiNarrow = nuValue as Indexed
+const omicronNarrow = muValue as Looping

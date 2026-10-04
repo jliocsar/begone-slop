@@ -16,3 +16,11 @@ function etaScope() {
   const etaNarrow = etaValue as () => number
   return etaNarrow
 }
+interface Point { readonly x: number }
+type PointAlias = { readonly x: number }
+const thetaValue: object = { x: 1 }
+const thetaNarrow = thetaValue as Point
+const iotaValue: Record<string, unknown> = { x: 1 }
+const iotaNarrow = iotaValue as PointAlias
+const kappaNarrow = thetaValue as PointAlias
+const lambdaNarrow = iotaValue as Point

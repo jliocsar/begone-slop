@@ -9,3 +9,5 @@
 /* oxlint disable, a space where the directive has a hyphen */
 const total = 1 // a trailing comment on a line of code
 // the invariant is SAFETY: adjacent, and the carve-out is anchored at the start
+const later = total as number /* see SAFETY: the marker must open the comment */
+/** @jsxImportSourcery is not the pragma */

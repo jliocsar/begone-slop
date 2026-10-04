@@ -1,14 +1,13 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
-
-const LAYER_BINDING = 'Layer'
+import { isEffectLayerReference, pipeStages } from '../shared/layer-import.ts'
 
 const PROVIDE = 'provide'
 
 const MESSAGE =
   'A Layer.provide inside another buries which layer satisfies which requirement. Name the inner layer first, or merge the two with Layer.provideMerge.'
 
-function isLayerProvideCall(node: ESTree.Node): boolean {
+function isLayerProvideCall(sourceCode: SourceCode, node: ESTree.Node): boolean {
   if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
     return false
   }
@@ -16,8 +15,7 @@ function isLayerProvideCall(node: ESTree.Node): boolean {
   const { object, property } = node.callee
 
   return (
-    object.type === 'Identifier' &&
-    object.name === LAYER_BINDING &&
+    isEffectLayerReference(sourceCode, object) &&
     property.type === 'Identifier' &&
     property.name === PROVIDE
   )
@@ -30,14 +28,23 @@ export default defineRule({
     messages: { nestedLayerProvide: MESSAGE },
   },
   create(context) {
+    const { sourceCode } = context
+
     return {
       CallExpression(node) {
-        if (!isLayerProvideCall(node)) {
+        if (!isLayerProvideCall(sourceCode, node)) {
           return
         }
 
-        for (const argument of node.arguments.filter(isLayerProvideCall)) {
-          context.report({ node: argument, messageId: 'nestedLayerProvide' })
+        const nestedCandidates = node.arguments.flatMap((argument) => [
+          argument,
+          ...pipeStages(sourceCode, argument),
+        ])
+
+        for (const nested of nestedCandidates) {
+          if (isLayerProvideCall(sourceCode, nested)) {
+            context.report({ node: nested, messageId: 'nestedLayerProvide' })
+          }
         }
       },
     }

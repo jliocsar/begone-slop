@@ -15,3 +15,23 @@ const epsilon = alpha as string
 const zeta = /* SAFETY: the caller checked the discriminant */ beta as string
 /* @ts-nocheck-style directive in block form */
 const eta = [gamma, delta, epsilon, zeta]
+/* v8 ignore next */
+const theta = /*#__PURE__*/ readValue()
+const iota = /* @__PURE__ */ readValue()
+/* #__NO_SIDE_EFFECTS__ */
+const kappa = () => readValue()
+// prettier-ignore
+const lambda = [1,0,0,1]
+// biome-ignore lint/suspicious/noExplicitAny: legacy
+const mu = [theta, iota, kappa, lambda]
+/**
+ * SAFETY: the parser checked the shape above
+ */
+const nu = mu as unknown[]
+/** @jsxImportSource preact */
+/* @jsx h */
+/* @jsxFrag Fragment */
+/* @jsxRuntime classic */
+// @vitest-environment jsdom
+/* @jest-environment node */
+//# sourceMappingURL=no-comments.js.map

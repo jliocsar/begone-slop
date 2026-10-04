@@ -17,6 +17,11 @@ import {
   typesHaveSameSyntax,
 } from '../shared/broad-type.ts'
 import { isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
+import {
+  createTypeEnvironment,
+  EMPTY_TYPE_ENVIRONMENT,
+  type TypeEnvironment,
+} from '../shared/type-environment.ts'
 
 type KnownValueEvidence = {
   readonly type: ESTree.TSType | undefined
@@ -181,6 +186,7 @@ function assertionIsNarrower(
   sourceText: string,
   widened: WidenedBinding,
   assertedType: ESTree.TSType,
+  environment: TypeEnvironment,
 ): boolean {
   const evidenceType = widened.evidence.type
   const recreatesEvidence =
@@ -195,14 +201,15 @@ function assertionIsNarrower(
   }
 
   return widened.broadKind === 'object'
-    ? isDefinitelyObjectType(assertedType)
-    : isDefinitelyNarrowerRecordType(assertedType)
+    ? isDefinitelyObjectType(assertedType, environment)
+    : isDefinitelyNarrowerRecordType(assertedType, environment)
 }
 
 function isWidenThenAssert(
   sourceCode: SourceCode,
   node: TypeAssertion,
   expression: ESTree.IdentifierReference,
+  environment: TypeEnvironment,
 ): boolean {
   const { scopes } = sourceCode.scopeManager
   const variable = resolvedVariableForIdentifier(scopes, expression)
@@ -212,7 +219,7 @@ function isWidenThenAssert(
     widened !== undefined &&
     node.start > widened.declaredAt &&
     hasSameBoundary(functionBoundary(node), widened.boundary) &&
-    assertionIsNarrower(sourceCode.text, widened, node.typeAnnotation)
+    assertionIsNarrower(sourceCode.text, widened, node.typeAnnotation, environment)
   )
 }
 
@@ -223,17 +230,25 @@ export default defineRule({
     messages: { widenThenAssert: MESSAGE },
   },
   create(context) {
+    let environment = EMPTY_TYPE_ENVIRONMENT
+
     const report = (node: TypeAssertion) => {
       const { expression } = node
 
       if (
         expression.type === 'Identifier' &&
-        isWidenThenAssert(context.sourceCode, node, expression)
+        isWidenThenAssert(context.sourceCode, node, expression, environment)
       ) {
         context.report({ node, messageId: 'widenThenAssert', data: { name: expression.name } })
       }
     }
 
-    return { TSAsExpression: report, TSTypeAssertion: report }
+    return {
+      Program(node) {
+        environment = createTypeEnvironment(node)
+      },
+      TSAsExpression: report,
+      TSTypeAssertion: report,
+    }
   },
 })

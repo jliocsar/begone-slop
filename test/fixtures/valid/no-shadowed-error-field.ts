@@ -27,3 +27,9 @@ class Reported extends Schema.TaggedErrorClass<Reported>()('Reported', {
     return `No user named ${this.userName}. Pass one that exists.`
   }
 }
+
+class DataNamed extends Data.TaggedError('DataNamed')<{ readonly userName: string; readonly message: string }> {}
+class NotAnError extends Data.Class<{ readonly name: string }> {}
+class TaggedData extends Data.TaggedClass('TaggedData')<{ readonly name: string }> {}
+class PlainStruct extends Schema.Class<PlainStruct>('PlainStruct')(Schema.Struct({ name: Schema.String })) {}
+class StructNamed extends Schema.ErrorClass<StructNamed>('StructNamed')(Schema.Struct({ userName: Schema.String })) {}

@@ -23,3 +23,9 @@ function blockScopedShadow() {
 
   return base.pipe(Layer.provide(database), Layer.provide(config))
 }
+
+const subjectIsNotAStage = effectPipe(Layer.provide(base, database), Layer.provide(config))
+const notEffectsPipe = lodashPipe(base, Layer.provide(database), Layer.provide(config))
+
+import { pipe as effectPipe } from 'effect'
+import { pipe as lodashPipe } from 'lodash/fp'

@@ -1,17 +1,20 @@
 import type { ESTree } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { stringLiteralValue } from '../shared/literal.ts'
 
-const DISABLE_VALIDATION_KEY = 'disableValidation'
+const DISABLING_KEYS = new Set(['disableValidation', 'disableChecks'])
 
 const MESSAGE =
   'Disabling validation decodes without checking, so the result carries a type nothing verified. Correct the schema or the data and leave validation on.'
 
 function namesTheOption(key: ESTree.Node): boolean {
   if (key.type === 'Identifier' || key.type === 'PrivateIdentifier') {
-    return key.name === DISABLE_VALIDATION_KEY
+    return DISABLING_KEYS.has(key.name)
   }
 
-  return key.type === 'Literal' && key.value === DISABLE_VALIDATION_KEY
+  const literalKey = stringLiteralValue(key)
+
+  return literalKey !== undefined && DISABLING_KEYS.has(literalKey)
 }
 
 function isTrueLiteral(node: ESTree.Node): boolean {
@@ -22,7 +25,8 @@ export default defineRule({
   meta: {
     type: 'problem',
     docs: {
-      description: 'forbid `disableValidation: true`, which decodes without checking the data',
+      description:
+        'forbid `disableChecks: true` (v3 `disableValidation: true`), which decodes without checking the data',
     },
     messages: { noDisableValidation: MESSAGE },
   },

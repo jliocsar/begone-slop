@@ -6,6 +6,12 @@ const SHADOWED_PROPERTIES = new Set(['name', 'stack'])
 
 const ERROR_CLASS_FACTORIES = new Set(['TaggedErrorClass', 'ErrorClass'])
 
+const STRUCT_CONSTRUCTOR = 'Struct'
+
+const DATA_ERROR_CONSTRUCTOR = 'Error'
+
+const DATA_TAGGED_ERROR_FACTORY = 'TaggedError'
+
 const MESSAGE =
   "A `{{field}}` field shadows `Error.prototype.{{field}}`, so this error stops identifying itself — `Cause.pretty`, the stack header and OTLP's exception.type/exception.stacktrace all read that property. Name the field for what it holds instead (`userName`, `agentName`, `commandStack`)."
 
@@ -34,12 +40,47 @@ function fieldsObject(node: ESTree.CallExpression): ESTree.ObjectExpression | un
     return undefined
   }
 
-  return node.arguments.find(
-    (argument): argument is ESTree.ObjectExpression => argument.type === 'ObjectExpression',
-  )
+  return node.arguments.map(structFields).find((fields) => fields !== undefined)
 }
 
-function propertyName(property: ESTree.ObjectProperty): string | undefined {
+function structFields(argument: ESTree.Argument): ESTree.ObjectExpression | undefined {
+  if (argument.type === 'ObjectExpression') {
+    return argument
+  }
+
+  if (argument.type !== 'CallExpression' || calleeName(argument.callee) !== STRUCT_CONSTRUCTOR) {
+    return undefined
+  }
+
+  const [fields] = argument.arguments
+
+  return fields?.type === 'ObjectExpression' ? fields : undefined
+}
+
+function extendsDataError(superClass: ESTree.Expression): boolean {
+  return superClass.type === 'CallExpression'
+    ? calleeName(superClass.callee) === DATA_TAGGED_ERROR_FACTORY
+    : calleeName(superClass) === DATA_ERROR_CONSTRUCTOR
+}
+
+function typeArgumentFields(node: ESTree.Class): readonly ESTree.TSSignature[] {
+  const { superClass, superTypeArguments } = node
+  const [fieldsType] = superTypeArguments?.params ?? []
+
+  if (
+    superClass === null ||
+    fieldsType?.type !== 'TSTypeLiteral' ||
+    !extendsDataError(superClass)
+  ) {
+    return []
+  }
+
+  return fieldsType.members
+}
+
+function propertyName(
+  property: ESTree.ObjectProperty | ESTree.TSPropertySignature,
+): string | undefined {
   if (!property.computed && property.key.type === 'Identifier') {
     return property.key.name
   }
@@ -54,7 +95,27 @@ export default defineRule({
     messages: { shadowedErrorField: MESSAGE },
   },
   create(context) {
+    function reportShadowedField(
+      property: ESTree.ObjectProperty | ESTree.TSPropertySignature,
+    ): void {
+      const field = propertyName(property)
+
+      if (field !== undefined && SHADOWED_PROPERTIES.has(field)) {
+        context.report({ node: property, messageId: 'shadowedErrorField', data: { field } })
+      }
+    }
+
+    function checkTypeArgumentFields(node: ESTree.Class): void {
+      for (const member of typeArgumentFields(node)) {
+        if (member.type === 'TSPropertySignature') {
+          reportShadowedField(member)
+        }
+      }
+    }
+
     return {
+      ClassDeclaration: checkTypeArgumentFields,
+      ClassExpression: checkTypeArgumentFields,
       CallExpression(node) {
         const fields = fieldsObject(node)
 
@@ -63,10 +124,8 @@ export default defineRule({
         }
 
         for (const property of fields.properties) {
-          const field = property.type === 'Property' ? propertyName(property) : undefined
-
-          if (field !== undefined && SHADOWED_PROPERTIES.has(field)) {
-            context.report({ node: property, messageId: 'shadowedErrorField', data: { field } })
+          if (property.type === 'Property') {
+            reportShadowedField(property)
           }
         }
       },

@@ -5,6 +5,7 @@ import {
   enclosingFunction,
   type FunctionOwner,
   functionName,
+  isOverloadImplementation,
   sourceKeyName,
 } from '../shared/enclosing-function.ts'
 import { hasKnownEvidence, isEmptyObjectExpression } from '../shared/known-evidence.ts'
@@ -41,10 +42,13 @@ function annotationTarget(
 }
 
 function returnTypeTarget(
+  sourceCode: SourceCode,
   owner: FunctionOwner | undefined,
   environment: TypeEnvironment,
 ): WideningTarget | undefined {
-  return owner === undefined ? undefined : annotationTarget(owner.returnType, environment)
+  return owner === undefined || isOverloadImplementation(sourceCode, owner)
+    ? undefined
+    : annotationTarget(owner.returnType, environment)
 }
 
 function wideningOf(
@@ -158,7 +162,7 @@ function returnWidening(
   return wideningOf(
     sourceCode,
     argument,
-    returnTypeTarget(owner, environment),
+    returnTypeTarget(sourceCode, owner, environment),
     `return value of \`${functionName(sourceCode, owner)}\``,
   )
 }

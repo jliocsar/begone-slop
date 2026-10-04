@@ -34,3 +34,9 @@ Effect.catchTags({ ...handlers })
 Effect.catchTag('Timeout', handler)
 const swallow = () => Effect.void
 const handlers = { Timeout: () => Effect.void }
+
+// v4 catch family with handlers that recover.
+Effect.catchCause(program, (cause) => Effect.logError(cause))
+Effect.catchIf(program, isTimeout, (error) => Effect.fail(error))
+Effect.catchCauseFilter(Cause.findFail, (failure) => Effect.succeed(failure))
+Effect.catchNoSuchElement(program)

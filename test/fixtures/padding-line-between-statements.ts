@@ -19,3 +19,18 @@ function overloaded(input: string | number): string | number {
   return input
 }
 function unrelated() {}
+
+const decoratedBefore = 2
+@sealed
+export class Decorated {}
+
+const overloadedBefore = 1
+function fenced(input: string): string
+function fenced(input: number): number
+function fenced(input: string | number): string | number {
+  return input
+}
+
+const defaultBefore = 1
+@sealed
+export default class {}

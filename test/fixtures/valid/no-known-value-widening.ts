@@ -36,3 +36,12 @@ function createAccumulator(): Record<string, Command> { return {} }
 const createArrow = (): Record<string, Command> => ({})
 class Registry { commands: Record<string, Command> = {} }
 class Accessors { accessor commands: Record<string, Command> = {} }
+function overloaded(): Record<string, Command>
+function overloaded(key: string): unknown
+function overloaded(key?: string): unknown { return { key } }
+export function exportedOverload(key: string): unknown
+export function exportedOverload(key?: string): unknown { return { key } }
+class MethodOverloads {
+  read(key: string): unknown
+  read(key?: string): unknown { return { key } }
+}

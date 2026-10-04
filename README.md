@@ -119,14 +119,14 @@ sense scoped to test files:
 | `no-tag-access`                     | reading the private `_tag` discriminant directly              |   ✅   |
 | `no-shadowed-error-field`           | a `name`/`stack` field that stops an error identifying itself |   ✅   |
 | `no-silent-error-swallow`           | catch handlers that swallow the error with a void effect      |   ✅   |
-| `no-disable-validation`             | `disableValidation: true`, which decodes without checking     |   ✅   |
+| `no-disable-validation`             | `disableChecks: true` (v3: `disableValidation`), unchecked    |   ✅   |
 | `no-service-option`                 | `Effect.serviceOption` instead of requiring the service       |   ✅   |
 | `no-effect-asvoid`                  | `Effect.asVoid` where the effect can be returned directly     |   ✅   |
 | `no-nested-layer-provide`           | nested `Layer.provide` calls                                  |   ✅   |
 | `no-cascading-layer-provide`        | multiple `Layer.provide` stages in one pipe                   |   ✅   |
 | `no-nested-effect-array-methods`    | one `effect/Array` call nested inside another                 |   ✅   |
 | `no-shadowed-standard-array-static` | standard `Array` statics when `Array` is Effect's             |   ✅   |
-| `prefer-option-from-nullable`       | a nullable `Option.some`/`Option.none` ternary                |   ✅   |
+| `prefer-option-from-nullable`       | a nullish ternary that restates `Option.fromNullishOr` & co.  |   ✅   |
 | `prefer-effect-match`               | chained literal ternaries over one subject                    |   ✅   |
 | `pipe-max-arguments`                | a `.pipe()` call with more than 20 arguments                  |   ✅   |
 | `no-sql-type-parameter`             | `sql<Type>` templates that assert a row shape                 |   ✅   |

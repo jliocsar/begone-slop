@@ -22,3 +22,16 @@ class Kappa {
   // SAFETY: the constructor assigns it before any read
   field = value as string
 }
+// SAFETY: the exported value was validated on the line above
+export const lambda = value as string
+// SAFETY: the default export was validated on the line above
+export default value as string
+/**
+ * SAFETY: a JSDoc block may open with the justification
+ */
+const mu = value as string
+const nu = [value]
+  // SAFETY: every element was checked by the caller
+  .map((item) => item as string)
+// SAFETY: the callback only ever receives strings
+const xi = (item: unknown) => item as string
