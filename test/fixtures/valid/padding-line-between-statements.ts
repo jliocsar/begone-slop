@@ -30,3 +30,15 @@ export function run(): void {}
 export class Runner {}
 
 export default function main(): void {}
+
+export function parse(input: string): number
+export function parse(input: number): number
+export function parse(input: string | number): number {
+  return Number(input)
+}
+
+function local(input: string): string
+function local(input: number): number
+function local(input: string | number): string | number {
+  return input
+}

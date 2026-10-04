@@ -145,11 +145,30 @@ function matchesAny(node: ESTree.Node, statementTypes: readonly StatementType[])
   return statementTypes.some((statementType) => STATEMENT_MATCHERS[statementType](declaration))
 }
 
+function continuesOverloads(previous: ESTree.Node, current: ESTree.Node): boolean {
+  const signature = exportedDeclaration(previous)
+  const following = exportedDeclaration(current)
+
+  if (signature.type !== 'TSDeclareFunction' || signature.id === null) {
+    return false
+  }
+
+  if (following.type !== 'TSDeclareFunction' && following.type !== 'FunctionDeclaration') {
+    return false
+  }
+
+  return following.id?.name === signature.id.name
+}
+
 function requiresBlankLine(
   specs: readonly Spec[],
   previous: ESTree.Node,
   current: ESTree.Node,
 ): boolean {
+  if (continuesOverloads(previous, current)) {
+    return false
+  }
+
   const governingSpec = specs.findLast(
     (spec) => matchesAny(previous, spec.prev) && matchesAny(current, spec.next),
   )

@@ -14,7 +14,7 @@ const CASES: { rule: string; lines: number[] }[] = [
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
   { rule: 'no-shadowed-error-field', lines: [1, 2] },
   { rule: 'expect-padding', lines: [2, 4] },
-  { rule: 'padding-line-between-statements', lines: [2, 5, 9, 12, 13, 14] },
+  { rule: 'padding-line-between-statements', lines: [2, 5, 9, 12, 13, 14, 21] },
   { rule: 'statement-order', lines: [5] },
   { rule: 'no-switch', lines: [1, 2] },
   { rule: 'no-try-catch', lines: [1, 2] },
