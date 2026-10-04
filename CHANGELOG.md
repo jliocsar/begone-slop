@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/jliocsar/begone-slop/compare/v0.2.1...v0.2.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* **padding-line-between-statements:** keep overload signatures with their implementation ([#11](https://github.com/jliocsar/begone-slop/issues/11)) ([2ed8c47](https://github.com/jliocsar/begone-slop/commit/2ed8c4793ec9d4ac2a774bc68b2f3afd6c8a9bfc))
+
 ## [0.2.1](https://github.com/jliocsar/begone-slop/compare/v0.2.0...v0.2.1) (2026-10-04)
 
 
