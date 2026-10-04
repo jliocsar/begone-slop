@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/jliocsar/begone-slop/compare/v0.2.7...v0.2.8) (2026-10-04)
+
+
+### Features
+
+* group SCREAMING_CASE constants, private before exported ([#23](https://github.com/jliocsar/begone-slop/issues/23)) ([fc0d40b](https://github.com/jliocsar/begone-slop/commit/fc0d40b05e289941b58586d1a9291db100d41df4))
+
 ## [0.2.7](https://github.com/jliocsar/begone-slop/compare/v0.2.6...v0.2.7) (2026-10-04)
 
 
