@@ -1,16 +1,12 @@
 import type { ESTree, Range, SourceCode, Span } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 
 export function statementsOf(node: ESTree.Node): readonly ESTree.Node[] {
   if (node.type === 'SwitchCase') {
     return node.consequent
   }
 
-  if (
-    node.type === 'Program' ||
-    node.type === 'BlockStatement' ||
-    node.type === 'StaticBlock' ||
-    node.type === 'TSModuleBlock'
-  ) {
+  if (isNodeOfType(node, ['Program', 'BlockStatement', 'StaticBlock', 'TSModuleBlock'])) {
     return node.body
   }
 

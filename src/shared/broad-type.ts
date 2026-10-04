@@ -1,4 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 import { type TypeEnvironment, typeReferenceName } from './type-environment.ts'
 
 export type BroadTypeKind = 'top' | 'object' | 'record'
@@ -22,11 +23,7 @@ function typeArgument(type: ESTree.TSTypeReference, index: number): ESTree.TSTyp
 }
 
 function isBroadRecordKeyType(type: ESTree.TSType): boolean {
-  if (
-    type.type === 'TSStringKeyword' ||
-    type.type === 'TSNumberKeyword' ||
-    type.type === 'TSSymbolKeyword'
-  ) {
+  if (isNodeOfType(type, ['TSStringKeyword', 'TSNumberKeyword', 'TSSymbolKeyword'])) {
     return true
   }
 
@@ -92,11 +89,11 @@ function isBroadRecordType(type: ESTree.TSType): boolean {
 }
 
 function isUnknownOrAnyType(type: ESTree.TSType): boolean {
-  return type.type === 'TSUnknownKeyword' || type.type === 'TSAnyKeyword'
+  return isNodeOfType(type, ['TSUnknownKeyword', 'TSAnyKeyword'])
 }
 
 export function broadTypeKind(type: ESTree.TSType): BroadTypeKind | undefined {
-  if (type.type === 'TSUnknownKeyword' || type.type === 'TSAnyKeyword') {
+  if (isNodeOfType(type, ['TSUnknownKeyword', 'TSAnyKeyword'])) {
     return 'top'
   }
 

@@ -1,4 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 
 export type TypeAliasEnvironment = ReadonlyMap<string, ESTree.TSType>
 
@@ -36,10 +37,7 @@ export const EMPTY_TYPE_ENVIRONMENT: TypeEnvironment = {
 function declaredStatement(
   statement: ESTree.Directive | ESTree.Statement,
 ): ESTree.Node | undefined {
-  if (
-    statement.type === 'ExportNamedDeclaration' ||
-    statement.type === 'ExportDefaultDeclaration'
-  ) {
+  if (isNodeOfType(statement, ['ExportNamedDeclaration', 'ExportDefaultDeclaration'])) {
     return statement.declaration ?? undefined
   }
 
@@ -62,14 +60,16 @@ function boundNames(declaration: ESTree.Node): readonly string[] {
   }
 
   if (
-    declaration.type === 'TSTypeAliasDeclaration' ||
-    declaration.type === 'TSInterfaceDeclaration' ||
-    declaration.type === 'TSEnumDeclaration'
+    isNodeOfType(declaration, [
+      'TSTypeAliasDeclaration',
+      'TSInterfaceDeclaration',
+      'TSEnumDeclaration',
+    ])
   ) {
     return [declaration.id.name]
   }
 
-  if (declaration.type === 'ClassDeclaration' || declaration.type === 'FunctionDeclaration') {
+  if (isNodeOfType(declaration, ['ClassDeclaration', 'FunctionDeclaration'])) {
     return declaration.id === null ? [] : [declaration.id.name]
   }
 
@@ -112,12 +112,7 @@ function interfacesByName(
 }
 
 function scopeBody(node: ESTree.Node): readonly (ESTree.Directive | ESTree.Statement)[] {
-  if (
-    node.type === 'Program' ||
-    node.type === 'BlockStatement' ||
-    node.type === 'StaticBlock' ||
-    node.type === 'TSModuleBlock'
-  ) {
+  if (isNodeOfType(node, ['Program', 'BlockStatement', 'StaticBlock', 'TSModuleBlock'])) {
     return node.body
   }
 
@@ -129,16 +124,16 @@ function scopedTypeDeclaration(
 ): ScopedTypeDeclaration | undefined {
   const declaration = declaredStatement(statement)
 
-  if (
-    declaration?.type === 'TSTypeAliasDeclaration' ||
-    declaration?.type === 'TSInterfaceDeclaration' ||
-    declaration?.type === 'TSEnumDeclaration' ||
-    declaration?.type === 'ClassDeclaration'
-  ) {
-    return declaration
-  }
+  const isScopedType =
+    declaration !== undefined &&
+    isNodeOfType(declaration, [
+      'TSTypeAliasDeclaration',
+      'TSInterfaceDeclaration',
+      'TSEnumDeclaration',
+      'ClassDeclaration',
+    ])
 
-  return undefined
+  return isScopedType ? declaration : undefined
 }
 
 export function nearestTypeDeclarations(

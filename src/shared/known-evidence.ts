@@ -1,4 +1,5 @@
 import type { ESTree, Scope, Variable } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 import {
   isConstDeclarator,
   isReassigned,
@@ -23,10 +24,12 @@ function stableConstInitializer(variable: Variable): ESTree.Expression | undefin
 
 function unwrapExpression(expression: ESTree.Expression): ESTree.Expression {
   if (
-    expression.type === 'TSAsExpression' ||
-    expression.type === 'TSSatisfiesExpression' ||
-    expression.type === 'TSTypeAssertion' ||
-    expression.type === 'TSNonNullExpression'
+    isNodeOfType(expression, [
+      'TSAsExpression',
+      'TSSatisfiesExpression',
+      'TSTypeAssertion',
+      'TSNonNullExpression',
+    ])
   ) {
     return unwrapExpression(expression.expression)
   }

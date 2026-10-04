@@ -1,4 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 
 export type FunctionSignatureNode =
   | ESTree.ArrowFunctionExpression
@@ -26,11 +27,13 @@ const UNKNOWN_ANNOTATION_SUFFIX = /\s*:\s*unknown\s*$/u
 
 export function isFunctionSignature(node: ESTree.Node): node is FunctionSignatureNode {
   return (
-    node.type === 'ArrowFunctionExpression' ||
-    node.type === 'FunctionDeclaration' ||
-    node.type === 'FunctionExpression' ||
-    node.type === 'TSCallSignatureDeclaration' ||
-    node.type === 'TSConstructSignatureDeclaration' ||
+    isNodeOfType(node, [
+      'ArrowFunctionExpression',
+      'FunctionDeclaration',
+      'FunctionExpression',
+      'TSCallSignatureDeclaration',
+      'TSConstructSignatureDeclaration',
+    ]) ||
     node.type === 'TSConstructorType' ||
     node.type === 'TSDeclareFunction' ||
     node.type === 'TSEmptyBodyFunctionExpression' ||
