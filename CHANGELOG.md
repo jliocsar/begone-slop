@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/jliocsar/begone-slop/compare/v0.2.2...v0.2.3) (2026-10-04)
+
+
+### Bug Fixes
+
+* close the gaps an adversarial pass found across 19 rules ([#13](https://github.com/jliocsar/begone-slop/issues/13)) ([128574d](https://github.com/jliocsar/begone-slop/commit/128574d557beb2c0a24c7806e7c3abae3c5b54ec))
+
 ## [0.2.2](https://github.com/jliocsar/begone-slop/compare/v0.2.1...v0.2.2) (2026-10-04)
 
 
