@@ -24,3 +24,9 @@ const seedArgument = ArrayOps.scan(values, ArrayOps.empty<string>(), (prefix, va
 const nonDataArgument = ArrayOps.difference(values, ArrayOps.map(others, (other) => other))
 const insideCallback = ArrayOps.map(values, (value) => ArrayOps.of(value))
 const insideNestedCallback = ArrayOps.filter(values, (value) => ArrayOps.contains(allowed, value))
+const dataLastSeed = pipe(
+  values,
+  ArrayOps.scan(ArrayOps.empty<string>(), (prefix, value) => [...prefix, value]),
+)
+
+import { pipe } from 'effect/Function'
