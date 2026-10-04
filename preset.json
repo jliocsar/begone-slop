@@ -2,6 +2,8 @@
   "plugins": [],
 
   "rules": {
+    "curly": ["error", "all"],
+
     "begone-slop/statement-order": "error",
     "begone-slop/no-tag-access": "error",
     "begone-slop/no-shadowed-error-field": "error",

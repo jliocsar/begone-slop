@@ -81,6 +81,9 @@ plugin set on top of your config, which fails the build on rules nobody chose. I
 `unicorn`, `oxc` or the rest, list them yourself in your own `plugins` array — it takes precedence,
 since later config wins.
 
+The one oxlint rule it does turn on is `curly: ["error", "all"]`: every `if`, `else`, `for` and
+`while` body takes braces. It autofixes.
+
 ## Rules
 
 `✅` marks the rules the preset enables. `expect-padding` is off by default because it only makes
