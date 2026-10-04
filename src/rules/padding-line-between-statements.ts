@@ -1,5 +1,6 @@
 import type { Diagnostic, ESTree, Options, Range, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isNodeOfType } from '../shared/node-type.ts'
 import { isBlockLike } from '../shared/block-like.ts'
 import {
   adjacentPairs,
@@ -70,9 +71,9 @@ const STATEMENT_MATCHERS = {
   '*': () => true,
   return: (node) => node.type === 'ReturnStatement',
   'block-like': isBlockLike,
-  function: (node) => node.type === 'FunctionDeclaration' || node.type === 'TSDeclareFunction',
+  function: (node) => isNodeOfType(node, ['FunctionDeclaration', 'TSDeclareFunction']),
   class: (node) => node.type === 'ClassDeclaration',
-  import: (node) => node.type === 'ImportDeclaration' || node.type === 'TSImportEqualsDeclaration',
+  import: (node) => isNodeOfType(node, ['ImportDeclaration', 'TSImportEqualsDeclaration']),
   'singleline-const': (node) => isSingleLineDeclaration(node, 'const'),
   'singleline-let': (node) => isSingleLineDeclaration(node, 'let'),
   'screaming-const': (_declaration, statement) => isScreamingConstDeclaration(statement),
@@ -98,8 +99,7 @@ function isSingleLineDeclaration(node: ESTree.Node, kind: 'const' | 'let'): bool
 }
 
 function exportedDeclaration(node: ESTree.Node): ESTree.Node {
-  const isExport =
-    node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration'
+  const isExport = isNodeOfType(node, ['ExportNamedDeclaration', 'ExportDefaultDeclaration'])
 
   return isExport ? (node.declaration ?? node) : node
 }
@@ -120,7 +120,7 @@ function continuesOverloads(previous: ESTree.Node, current: ESTree.Node): boolea
     return false
   }
 
-  if (following.type !== 'TSDeclareFunction' && following.type !== 'FunctionDeclaration') {
+  if (!isNodeOfType(following, ['TSDeclareFunction', 'FunctionDeclaration'])) {
     return false
   }
 

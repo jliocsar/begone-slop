@@ -1,15 +1,16 @@
 import type { ESTree, SourceCode } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 
 export type FunctionOwner = ESTree.ArrowFunctionExpression | ESTree.Function
 
 const ANONYMOUS_FUNCTION_NAME = 'anonymous function'
 
 function isFunctionOwner(node: ESTree.Node): node is FunctionOwner {
-  return (
-    node.type === 'ArrowFunctionExpression' ||
-    node.type === 'FunctionDeclaration' ||
-    node.type === 'FunctionExpression'
-  )
+  return isNodeOfType(node, [
+    'ArrowFunctionExpression',
+    'FunctionDeclaration',
+    'FunctionExpression',
+  ])
 }
 
 export function enclosingFunction(node: ESTree.Node): FunctionOwner | undefined {
@@ -23,7 +24,7 @@ export function enclosingFunction(node: ESTree.Node): FunctionOwner | undefined 
 }
 
 export function sourceKeyName(sourceCode: SourceCode, key: ESTree.PropertyKey): string {
-  if (key.type === 'Identifier' || key.type === 'PrivateIdentifier') {
+  if (isNodeOfType(key, ['Identifier', 'PrivateIdentifier'])) {
     return key.name
   }
 
@@ -53,16 +54,11 @@ export function functionName(sourceCode: SourceCode, owner: FunctionOwner | unde
 }
 
 function isExportDeclaration(node: ESTree.Node): boolean {
-  return node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration'
+  return isNodeOfType(node, ['ExportNamedDeclaration', 'ExportDefaultDeclaration'])
 }
 
 function siblingsOf(parent: ESTree.Node): readonly ESTree.Node[] {
-  if (
-    parent.type === 'Program' ||
-    parent.type === 'BlockStatement' ||
-    parent.type === 'TSModuleBlock' ||
-    parent.type === 'ClassBody'
-  ) {
+  if (isNodeOfType(parent, ['Program', 'BlockStatement', 'TSModuleBlock', 'ClassBody'])) {
     return parent.body
   }
 
@@ -82,10 +78,12 @@ function previousSibling(node: ESTree.Node): ESTree.Node | undefined {
 }
 
 function declaredSignatureName(statement: ESTree.Node): string | undefined {
-  const declaration =
-    statement.type === 'ExportNamedDeclaration' || statement.type === 'ExportDefaultDeclaration'
-      ? statement.declaration
-      : statement
+  const declaration = isNodeOfType(statement, [
+    'ExportNamedDeclaration',
+    'ExportDefaultDeclaration',
+  ])
+    ? statement.declaration
+    : statement
 
   return declaration?.type === 'TSDeclareFunction' ? declaration.id?.name : undefined
 }

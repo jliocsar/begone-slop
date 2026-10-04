@@ -1,5 +1,6 @@
 import type { ESTree } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isNodeOfType } from '../shared/node-type.ts'
 import { stringLiteralValue } from '../shared/literal.ts'
 
 const DISABLING_KEYS = new Set(['disableValidation', 'disableChecks'])
@@ -8,7 +9,7 @@ const MESSAGE =
   'Disabling validation decodes without checking, so the result carries a type nothing verified. Correct the schema or the data and leave validation on.'
 
 function namesTheOption(key: ESTree.Node): boolean {
-  if (key.type === 'Identifier' || key.type === 'PrivateIdentifier') {
+  if (isNodeOfType(key, ['Identifier', 'PrivateIdentifier'])) {
     return DISABLING_KEYS.has(key.name)
   }
 

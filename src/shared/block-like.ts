@@ -1,4 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 
 const BLOCK_OWNING_STATEMENTS = new Set([
   'BlockStatement',
@@ -17,7 +18,7 @@ function isBlockBodiedFunction(node: ESTree.Node | null | undefined): boolean {
     return false
   }
 
-  const isFunction = node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression'
+  const isFunction = isNodeOfType(node, ['FunctionExpression', 'ArrowFunctionExpression'])
 
   return isFunction && node.body?.type === 'BlockStatement'
 }

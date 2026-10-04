@@ -1,5 +1,6 @@
 import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isNodeOfType } from '../shared/node-type.ts'
 
 const EQUALITY_OPERATORS = new Set(['==', '===', '!=', '!=='])
 const MINIMUM_LITERAL_CHECKS = 2
@@ -35,7 +36,7 @@ function readsOneValue(node: ESTree.Node): boolean {
     return readsOneValue(node.object) && (!node.computed || readsOneValue(node.property))
   }
 
-  if (node.type === 'ChainExpression' || node.type === 'TSNonNullExpression') {
+  if (isNodeOfType(node, ['ChainExpression', 'TSNonNullExpression'])) {
     return readsOneValue(node.expression)
   }
 
@@ -43,7 +44,7 @@ function readsOneValue(node: ESTree.Node): boolean {
     return node.operator !== 'delete' && readsOneValue(node.argument)
   }
 
-  if (node.type === 'BinaryExpression' || node.type === 'LogicalExpression') {
+  if (isNodeOfType(node, ['BinaryExpression', 'LogicalExpression'])) {
     return readsOneValue(node.left) && readsOneValue(node.right)
   }
 

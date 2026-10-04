@@ -1,4 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
+import { isNodeOfType } from './node-type.ts'
 import { resolvesToDictionary } from './dictionary-values.ts'
 import { lexicalTypeParameterNames } from './function-signature.ts'
 import {
@@ -274,10 +275,12 @@ export function classifyWideningTarget(
 
 export function isKnownEvidenceExpression(expression: ESTree.Expression): boolean {
   if (
-    expression.type === 'TSAsExpression' ||
-    expression.type === 'TSTypeAssertion' ||
-    expression.type === 'TSNonNullExpression' ||
-    expression.type === 'TSSatisfiesExpression'
+    isNodeOfType(expression, [
+      'TSAsExpression',
+      'TSTypeAssertion',
+      'TSNonNullExpression',
+      'TSSatisfiesExpression',
+    ])
   ) {
     return isKnownEvidenceExpression(expression.expression)
   }

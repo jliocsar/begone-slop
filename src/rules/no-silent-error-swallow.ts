@@ -1,5 +1,6 @@
 import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isNodeOfType } from '../shared/node-type.ts'
 import { effectModuleMemberName } from '../shared/effect-module-import.ts'
 
 const EFFECT_MODULE = 'Effect'
@@ -35,7 +36,7 @@ function isEffectMember(
 }
 
 function returnsOnlyVoid(sourceCode: SourceCode, node: ESTree.Node): boolean {
-  if (node.type !== 'ArrowFunctionExpression' && node.type !== 'FunctionExpression') {
+  if (!isNodeOfType(node, ['ArrowFunctionExpression', 'FunctionExpression'])) {
     return false
   }
 

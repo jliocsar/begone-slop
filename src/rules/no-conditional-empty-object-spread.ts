@@ -1,14 +1,13 @@
 import type { ESTree } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isNodeOfType } from '../shared/node-type.ts'
 
 const MESSAGE =
   'This conditional spread hides property omission behind an empty object. Build the object in separate statements and add the property only when present.'
 
 function unwrapped(expression: ESTree.Expression): ESTree.Expression {
   if (
-    expression.type === 'TSAsExpression' ||
-    expression.type === 'TSSatisfiesExpression' ||
-    expression.type === 'ParenthesizedExpression'
+    isNodeOfType(expression, ['TSAsExpression', 'TSSatisfiesExpression', 'ParenthesizedExpression'])
   ) {
     return unwrapped(expression.expression)
   }

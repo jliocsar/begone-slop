@@ -1,5 +1,6 @@
 import type { Comment, ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isNodeOfType } from '../shared/node-type.ts'
 import { isConstAssertion, isSafetyComment, type TypeAssertion } from '../shared/type-assertion.ts'
 
 const STATEMENT_KIND = /(?:Declaration|Statement)$/u
@@ -18,7 +19,7 @@ function isStatement(node: ESTree.Node): boolean {
 }
 
 function isExportDeclaration(node: ESTree.Node): boolean {
-  return node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration'
+  return isNodeOfType(node, ['ExportNamedDeclaration', 'ExportDefaultDeclaration'])
 }
 
 function commentsBefore(sourceCode: SourceCode, current: ESTree.Node): readonly Comment[] {
@@ -33,7 +34,7 @@ function commentsBefore(sourceCode: SourceCode, current: ESTree.Node): readonly 
 function previousJsxSibling(current: ESTree.Node): ESTree.JSXChild | undefined {
   const { parent } = current
 
-  if (parent?.type !== 'JSXElement' && parent?.type !== 'JSXFragment') {
+  if (parent === null || !isNodeOfType(parent, ['JSXElement', 'JSXFragment'])) {
     return undefined
   }
 
