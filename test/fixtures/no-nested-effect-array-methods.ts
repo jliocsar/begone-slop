@@ -9,3 +9,5 @@ const mixedBindings = Array.map(EffectArray.of(value), (value) => value)
 
 import * as Arr from 'effect/Array'
 import { Array as EffectArray } from 'effect'
+const emptyAsData = Arr.append(Arr.empty<number>(), 1)
+const nestedDeeperInData = Arr.map(identity(Arr.of(1)), (value) => value)
