@@ -1,34 +1,33 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const BANNED_TYPE_ANNOTATIONS = new Set(['TSAnyKeyword', 'TSNeverKeyword', 'TSUnknownKeyword'])
 
 const MESSAGE =
   'Asserting to any, never or unknown discards the very checking you are about to rely on. Give the value a real type, or make the function generic over it.'
 
-function assertsToBannedType(node: ESTree.Node): boolean {
-  if (node.type !== 'TSAsExpression' && node.type !== 'TSTypeAssertion') {
-    return false
-  }
-
+function assertsToBannedType(node: ESTree.TSAsExpression | ESTree.TSTypeAssertion): boolean {
   return BANNED_TYPE_ANNOTATIONS.has(node.typeAnnotation.type)
 }
 
-export default Rule.define({
-  name: 'no-banned-type-assertions',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid assertions to any, never or unknown',
+    docs: { description: 'forbid assertions to any, never or unknown' },
     messages: { bannedTypeAssertion: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
-    const report = (node: ESTree.Node) =>
-      assertsToBannedType(node)
-        ? context.report(Diagnostic.fromId({ node, messageId: 'bannedTypeAssertion' }))
-        : Effect.void
-
-    return { TSAsExpression: report, TSTypeAssertion: report }
+  },
+  create(context) {
+    return {
+      TSAsExpression(node) {
+        if (assertsToBannedType(node)) {
+          context.report({ node, messageId: 'bannedTypeAssertion' })
+        }
+      },
+      TSTypeAssertion(node) {
+        if (assertsToBannedType(node)) {
+          context.report({ node, messageId: 'bannedTypeAssertion' })
+        }
+      },
+    }
   },
 })

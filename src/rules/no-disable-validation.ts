@@ -1,5 +1,5 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const DISABLE_VALIDATION_KEY = 'disableValidation'
 
@@ -14,29 +14,25 @@ function namesTheOption(key: ESTree.Node): boolean {
   return key.type === 'Literal' && key.value === DISABLE_VALIDATION_KEY
 }
 
-function disablesValidation(node: ESTree.Node): boolean {
-  if (node.type !== 'Property') {
-    return false
-  }
-
-  return namesTheOption(node.key) && node.value.type === 'Literal' && node.value.value === true
+function isTrueLiteral(node: ESTree.Node): boolean {
+  return node.type === 'Literal' && node.value === true
 }
 
-export default Rule.define({
-  name: 'no-disable-validation',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid `disableValidation: true`, which decodes without checking the data',
+    docs: {
+      description: 'forbid `disableValidation: true`, which decodes without checking the data',
+    },
     messages: { noDisableValidation: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      Property: (node: ESTree.Node) =>
-        disablesValidation(node)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'noDisableValidation' }))
-          : Effect.void,
+      Property(node) {
+        if (namesTheOption(node.key) && isTrueLiteral(node.value)) {
+          context.report({ node, messageId: 'noDisableValidation' })
+        }
+      },
     }
   },
 })

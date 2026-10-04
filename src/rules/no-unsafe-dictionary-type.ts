@@ -1,7 +1,5 @@
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import * as Ref from 'effect/Ref'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import {
   classifyUnsafeDictionary,
   classifyUnsafeDictionaryValue,
@@ -61,14 +59,6 @@ function isTypeNode(node: ESTree.Node): node is ESTree.TSType {
   return TYPE_NODE_KINDS.has(node.type)
 }
 
-function unsafeDiagnostic(node: ESTree.Node, unsafeValue: UnsafeValue): Diagnostic.Diagnostic {
-  return Diagnostic.fromId({
-    node,
-    messageId: 'unsafeDictionary',
-    data: { value: unsafeValue },
-  })
-}
-
 function isInsideTypeAliasDeclaration(node: ESTree.Node): boolean {
   const { parent } = node
 
@@ -84,9 +74,9 @@ function isPlainAliasConsumerUse(node: ESTree.TSType, environment: TypeEnvironme
     return false
   }
 
-  return typeReferenceName(node).pipe(
-    Option.exists((name) => environment.aliases.has(name) && !isInsideTypeAliasDeclaration(node)),
-  )
+  const name = typeReferenceName(node)
+
+  return name !== undefined && environment.aliases.has(name) && !isInsideTypeAliasDeclaration(node)
 }
 
 function hasUnsafeTypeAncestor(node: ESTree.Node, environment: TypeEnvironment): boolean {
@@ -96,76 +86,72 @@ function hasUnsafeTypeAncestor(node: ESTree.Node, environment: TypeEnvironment):
     return false
   }
 
-  if (isTypeNode(parent) && Option.isSome(classifyUnsafeDictionary(parent, environment))) {
+  if (isTypeNode(parent) && classifyUnsafeDictionary(parent, environment) !== undefined) {
     return true
   }
 
   return hasUnsafeTypeAncestor(parent, environment)
 }
 
-function unsafeTypeDiagnostic(
-  node: ESTree.Node,
+function unsafeTypeValue(
+  node: ESTree.TSType,
   environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (!isTypeNode(node) || isPlainAliasConsumerUse(node, environment)) {
-    return Option.none()
+): UnsafeValue | undefined {
+  if (isPlainAliasConsumerUse(node, environment)) {
+    return undefined
   }
 
-  return classifyUnsafeDictionary(node, environment).pipe(
-    Option.filter(() => !hasUnsafeTypeAncestor(node, environment)),
-    Option.map((unsafe) => unsafeDiagnostic(node, unsafe.unsafeValue)),
-  )
-}
+  const unsafe = classifyUnsafeDictionary(node, environment)
 
-function unsafeIndexSignatureDiagnostic(
-  node: ESTree.Node,
-  environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (node.type !== 'TSIndexSignature' || node.parent.type === 'TSTypeLiteral') {
-    return Option.none()
+  if (unsafe === undefined || hasUnsafeTypeAncestor(node, environment)) {
+    return undefined
   }
 
-  return classifyUnsafeDictionaryValue(node.typeAnnotation.typeAnnotation, environment).pipe(
-    Option.map((unsafe) => unsafeDiagnostic(node, unsafe.unsafeValue)),
-  )
+  return unsafe.unsafeValue
 }
 
-export default Rule.define({
-  name: 'no-unsafe-dictionary-type',
-  meta: Rule.meta({
+function unsafeIndexSignatureValue(
+  node: ESTree.TSIndexSignature,
+  environment: TypeEnvironment,
+): UnsafeValue | undefined {
+  if (node.parent.type === 'TSTypeLiteral') {
+    return undefined
+  }
+
+  return classifyUnsafeDictionaryValue(node.typeAnnotation.typeAnnotation, environment)?.unsafeValue
+}
+
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid dictionary types whose value type is an escape hatch',
+    docs: { description: 'forbid dictionary types whose value type is an escape hatch' },
     messages: { unsafeDictionary: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-    const environment = yield* Ref.make(EMPTY_TYPE_ENVIRONMENT)
+  },
+  create(context) {
+    let environment = EMPTY_TYPE_ENVIRONMENT
 
-    const report =
-      (
-        diagnose: (
-          node: ESTree.Node,
-          known: TypeEnvironment,
-        ) => Option.Option<Diagnostic.Diagnostic>,
-      ) =>
-      (node: ESTree.Node) =>
-        Ref.get(environment).pipe(
-          Effect.flatMap((known) =>
-            Option.match(diagnose(node, known), {
-              onNone: () => Effect.void,
-              onSome: context.report,
-            }),
-          ),
-        )
+    const report = (node: ESTree.Node, unsafeValue: UnsafeValue | undefined) => {
+      if (unsafeValue !== undefined) {
+        context.report({ node, messageId: 'unsafeDictionary', data: { value: unsafeValue } })
+      }
+    }
 
-    const reportUnsafeType = report(unsafeTypeDiagnostic)
+    const reportUnsafeType = (
+      node: ESTree.TSTypeReference | ESTree.TSTypeLiteral | ESTree.TSMappedType,
+    ) => {
+      report(node, unsafeTypeValue(node, environment))
+    }
 
     return {
-      Program: (node: ESTree.Node) => Ref.set(environment, createTypeEnvironment(node)),
+      Program(node) {
+        environment = createTypeEnvironment(node)
+      },
       TSTypeReference: reportUnsafeType,
       TSTypeLiteral: reportUnsafeType,
       TSMappedType: reportUnsafeType,
-      TSIndexSignature: report(unsafeIndexSignatureDiagnostic),
+      TSIndexSignature(node) {
+        report(node, unsafeIndexSignatureValue(node, environment))
+      },
     }
   },
 })

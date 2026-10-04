@@ -1,4 +1,5 @@
-import type { ESTree, Rule } from '@oxlint/plugins'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import { stringLiteralValue } from '../shared/literal.ts'
 
 const SHADOWED_PROPERTIES = new Set(['name', 'stack'])
@@ -46,7 +47,7 @@ function propertyName(property: ESTree.ObjectProperty): string | undefined {
   return stringLiteralValue(property.key)
 }
 
-export default {
+export default defineRule({
   meta: {
     type: 'problem',
     docs: { description: "forbid error schema fields that shadow Error's own properties" },
@@ -71,4 +72,4 @@ export default {
       },
     }
   },
-} satisfies Rule
+})

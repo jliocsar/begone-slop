@@ -1,5 +1,4 @@
 {
-  "$schema": "https://raw.githubusercontent.com/Effect-TS/language-service/refs/heads/main/schema.json",
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["ESNext"],
@@ -19,8 +18,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-
-    "plugins": [{ "name": "@effect/language-service", "diagnostics": false }]
+    "noFallthroughCasesInSwitch": true
   }
 }

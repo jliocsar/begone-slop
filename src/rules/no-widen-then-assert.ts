@@ -1,14 +1,5 @@
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import {
-  Diagnostic,
-  type ESTree,
-  type OxlintScope,
-  type OxlintSourceCode,
-  Rule,
-  RuleContext,
-  type Variable,
-} from 'effect-oxlint'
+import type { ESTree, Scope, SourceCode, Variable } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import {
   annotatedBinding,
   functionBoundary,
@@ -28,14 +19,14 @@ import {
 import { isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 
 type KnownValueEvidence = {
-  readonly type: Option.Option<ESTree.TSType>
+  readonly type: ESTree.TSType | undefined
 }
 
 type WidenedBinding = {
   readonly broadKind: BroadTypeKind
   readonly evidence: KnownValueEvidence
   readonly declaredAt: number
-  readonly boundary: Option.Option<ESTree.Node>
+  readonly boundary: ESTree.Node | undefined
 }
 
 const SYNTACTIC_VALUE_EXPRESSIONS = new Set([
@@ -52,134 +43,138 @@ const SYNTACTIC_VALUE_EXPRESSIONS = new Set([
 const MESSAGE =
   'Binding "{{name}}" discards type evidence and later recreates it with an assertion. Keep the precise type from initialization through use; parse boundary input once.'
 
-function assertionFromExpression(expression: ESTree.Expression): Option.Option<TypeAssertion> {
-  return isTypeAssertion(expression) ? Option.some(expression) : Option.none()
-}
-
 function annotationEvidence(
   identifier: ESTree.Node,
   annotation: ESTree.TSType,
-  boundary: Option.Option<ESTree.Node>,
-): Option.Option<KnownValueEvidence> {
+  boundary: ESTree.Node | undefined,
+): KnownValueEvidence | undefined {
   return hasSameBoundary(functionBoundary(identifier), boundary) &&
-    Option.isNone(broadTypeKind(annotation))
-    ? Option.some({ type: Option.some(annotation) })
-    : Option.none()
+    broadTypeKind(annotation) === undefined
+    ? { type: annotation }
+    : undefined
 }
 
 function knownValueEvidence(
   expression: ESTree.Expression,
-  scopes: readonly OxlintScope[],
-  boundary: Option.Option<ESTree.Node>,
+  scopes: readonly Scope[],
+  boundary: ESTree.Node | undefined,
   visitedVariables: ReadonlySet<Variable>,
-): Option.Option<KnownValueEvidence> {
+): KnownValueEvidence | undefined {
   if (isTypeAssertion(expression)) {
-    return Option.isSome(broadTypeKind(expression.typeAnnotation))
-      ? Option.none()
-      : Option.some({ type: Option.some(expression.typeAnnotation) })
+    return broadTypeKind(expression.typeAnnotation) === undefined
+      ? { type: expression.typeAnnotation }
+      : undefined
   }
 
   if (SYNTACTIC_VALUE_EXPRESSIONS.has(expression.type)) {
-    return Option.some({ type: Option.none() })
+    return { type: undefined }
   }
 
   if (expression.type !== 'Identifier') {
-    return Option.none()
+    return undefined
   }
 
-  return resolvedVariableForIdentifier(scopes, expression).pipe(
-    Option.filter((variable) => !visitedVariables.has(variable)),
-    Option.flatMap((variable) =>
-      Option.match(annotatedBinding(variable), {
-        onSome: ({ identifier, annotation }) =>
-          annotationEvidence(identifier, annotation, boundary),
-        onNone: () => initializerEvidence(variable, scopes, boundary, visitedVariables),
-      }),
-    ),
-  )
+  const variable = resolvedVariableForIdentifier(scopes, expression)
+
+  if (variable === undefined || visitedVariables.has(variable)) {
+    return undefined
+  }
+
+  const binding = annotatedBinding(variable)
+
+  if (binding === undefined) {
+    return initializerEvidence(variable, scopes, boundary, visitedVariables)
+  }
+
+  return annotationEvidence(binding.identifier, binding.annotation, boundary)
 }
 
 function initializerEvidence(
   variable: Variable,
-  scopes: readonly OxlintScope[],
-  boundary: Option.Option<ESTree.Node>,
+  scopes: readonly Scope[],
+  boundary: ESTree.Node | undefined,
   visitedVariables: ReadonlySet<Variable>,
-): Option.Option<KnownValueEvidence> {
-  return variableDeclarator(variable).pipe(
-    Option.filter(
-      (declarator) =>
-        isConstDeclarator(declarator) &&
-        !isReassigned(variable) &&
-        hasSameBoundary(functionBoundary(declarator), boundary),
-    ),
-    Option.flatMap((declarator) => Option.fromNullishOr(declarator.init)),
-    Option.flatMap((init) =>
-      knownValueEvidence(init, scopes, boundary, new Set([...visitedVariables, variable])),
-    ),
+): KnownValueEvidence | undefined {
+  const declarator = variableDeclarator(variable)
+
+  if (
+    declarator === undefined ||
+    !isConstDeclarator(declarator) ||
+    isReassigned(variable) ||
+    !hasSameBoundary(functionBoundary(declarator), boundary) ||
+    declarator.init === null
+  ) {
+    return undefined
+  }
+
+  return knownValueEvidence(
+    declarator.init,
+    scopes,
+    boundary,
+    new Set([...visitedVariables, variable]),
   )
 }
 
 function initializerWidening(
   init: ESTree.Expression,
-): Option.Option<{ readonly assertion: TypeAssertion; readonly kind: BroadTypeKind }> {
-  return assertionFromExpression(init).pipe(
-    Option.flatMap((assertion) =>
-      Option.map(broadTypeKind(assertion.typeAnnotation), (kind) => ({ assertion, kind })),
-    ),
-  )
-}
-
-function declaredTypeKind(declarator: ESTree.VariableDeclarator): Option.Option<BroadTypeKind> {
-  if (declarator.id.type !== 'Identifier') {
-    return Option.none()
+): { readonly assertion: TypeAssertion; readonly kind: BroadTypeKind } | undefined {
+  if (!isTypeAssertion(init)) {
+    return undefined
   }
 
-  return Option.fromNullishOr(declarator.id.typeAnnotation).pipe(
-    Option.flatMap((annotation) => broadTypeKind(annotation.typeAnnotation)),
-  )
+  const kind = broadTypeKind(init.typeAnnotation)
+
+  return kind === undefined ? undefined : { assertion: init, kind }
+}
+
+function declaredTypeKind(declarator: ESTree.VariableDeclarator): BroadTypeKind | undefined {
+  if (declarator.id.type !== 'Identifier') {
+    return undefined
+  }
+
+  const annotation = declarator.id.typeAnnotation
+
+  return annotation === null || annotation === undefined
+    ? undefined
+    : broadTypeKind(annotation.typeAnnotation)
 }
 
 function widenedFromInitializer(
   declarator: ESTree.VariableDeclarator,
   init: ESTree.Expression,
-  scopes: readonly OxlintScope[],
+  scopes: readonly Scope[],
   variable: Variable,
-): Option.Option<WidenedBinding> {
+): WidenedBinding | undefined {
   const widening = initializerWidening(init)
   const boundary = functionBoundary(declarator)
-  const preWidening = Option.match(widening, {
-    onSome: ({ assertion }) => assertion.expression,
-    onNone: () => init,
-  })
+  const preWidening = widening === undefined ? init : widening.assertion.expression
+  const broadKind = declaredTypeKind(declarator) ?? widening?.kind
 
-  return declaredTypeKind(declarator).pipe(
-    Option.orElse(() => Option.map(widening, ({ kind }) => kind)),
-    Option.flatMap((broadKind) =>
-      Option.map(
-        knownValueEvidence(preWidening, scopes, boundary, new Set([variable])),
-        (evidence) => ({ broadKind, evidence, declaredAt: declarator.end, boundary }),
-      ),
-    ),
-  )
+  if (broadKind === undefined) {
+    return undefined
+  }
+
+  const evidence = knownValueEvidence(preWidening, scopes, boundary, new Set([variable]))
+
+  return evidence === undefined
+    ? undefined
+    : { broadKind, evidence, declaredAt: declarator.end, boundary }
 }
 
-function widenedBinding(
-  variable: Variable,
-  scopes: readonly OxlintScope[],
-): Option.Option<WidenedBinding> {
-  return variableDeclarator(variable).pipe(
-    Option.filter(
-      (declarator) =>
-        isConstDeclarator(declarator) &&
-        declarator.id.type === 'Identifier' &&
-        !isReassigned(variable),
-    ),
-    Option.flatMap((declarator) =>
-      Option.fromNullishOr(declarator.init).pipe(
-        Option.flatMap((init) => widenedFromInitializer(declarator, init, scopes, variable)),
-      ),
-    ),
-  )
+function widenedBinding(variable: Variable, scopes: readonly Scope[]): WidenedBinding | undefined {
+  const declarator = variableDeclarator(variable)
+
+  if (
+    declarator === undefined ||
+    !isConstDeclarator(declarator) ||
+    declarator.id.type !== 'Identifier' ||
+    isReassigned(variable) ||
+    declarator.init === null
+  ) {
+    return undefined
+  }
+
+  return widenedFromInitializer(declarator, declarator.init, scopes, variable)
 }
 
 function assertionIsNarrower(
@@ -187,11 +182,11 @@ function assertionIsNarrower(
   widened: WidenedBinding,
   assertedType: ESTree.TSType,
 ): boolean {
-  const recreatesEvidence = Option.exists(widened.evidence.type, (type) =>
-    typesHaveSameSyntax(sourceText, type, assertedType),
-  )
+  const evidenceType = widened.evidence.type
+  const recreatesEvidence =
+    evidenceType !== undefined && typesHaveSameSyntax(sourceText, evidenceType, assertedType)
 
-  if (Option.isSome(broadTypeKind(assertedType))) {
+  if (broadTypeKind(assertedType) !== undefined) {
     return false
   }
 
@@ -204,55 +199,40 @@ function assertionIsNarrower(
     : isDefinitelyNarrowerRecordType(assertedType)
 }
 
-function widenThenAssertDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (!isTypeAssertion(node)) {
-    return Option.none()
-  }
-
-  const { expression } = node
-
-  if (expression.type !== 'Identifier') {
-    return Option.none()
-  }
-
+function isWidenThenAssert(
+  sourceCode: SourceCode,
+  node: TypeAssertion,
+  expression: ESTree.IdentifierReference,
+): boolean {
   const { scopes } = sourceCode.scopeManager
+  const variable = resolvedVariableForIdentifier(scopes, expression)
+  const widened = variable === undefined ? undefined : widenedBinding(variable, scopes)
 
-  return resolvedVariableForIdentifier(scopes, expression).pipe(
-    Option.flatMap((variable) => widenedBinding(variable, scopes)),
-    Option.filter(
-      (widened) =>
-        node.start > widened.declaredAt &&
-        hasSameBoundary(functionBoundary(node), widened.boundary) &&
-        assertionIsNarrower(sourceCode.text, widened, node.typeAnnotation),
-    ),
-    Option.map(() =>
-      Diagnostic.fromId({
-        node,
-        messageId: 'widenThenAssert',
-        data: { name: expression.name },
-      }),
-    ),
+  return (
+    widened !== undefined &&
+    node.start > widened.declaredAt &&
+    hasSameBoundary(functionBoundary(node), widened.boundary) &&
+    assertionIsNarrower(sourceCode.text, widened, node.typeAnnotation)
   )
 }
 
-export default Rule.define({
-  name: 'no-widen-then-assert',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid asserting a widened const binding back to a narrower type',
+    docs: { description: 'forbid asserting a widened const binding back to a narrower type' },
     messages: { widenThenAssert: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
+  },
+  create(context) {
+    const report = (node: TypeAssertion) => {
+      const { expression } = node
 
-    const report = (node: ESTree.Node) =>
-      Option.match(widenThenAssertDiagnostic(context.sourceCode, node), {
-        onNone: () => Effect.void,
-        onSome: context.report,
-      })
+      if (
+        expression.type === 'Identifier' &&
+        isWidenThenAssert(context.sourceCode, node, expression)
+      ) {
+        context.report({ node, messageId: 'widenThenAssert', data: { name: expression.name } })
+      }
+    }
 
     return { TSAsExpression: report, TSTypeAssertion: report }
   },

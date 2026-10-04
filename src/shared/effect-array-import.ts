@@ -1,5 +1,4 @@
-import * as Arr from 'effect/Array'
-import type { ESTree } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 
 export const EFFECT_ARRAY_BINDING = 'Array'
 
@@ -26,18 +25,13 @@ function bindsArrayUnaliased(declaration: ESTree.ImportDeclaration): boolean {
   const source = declaration.source.value
 
   return (
-    (source === EFFECT_PACKAGE && Arr.some(declaration.specifiers, bindsBarrelArray)) ||
-    (source === EFFECT_ARRAY_MODULE && Arr.some(declaration.specifiers, bindsLeafArray))
+    (source === EFFECT_PACKAGE && declaration.specifiers.some(bindsBarrelArray)) ||
+    (source === EFFECT_ARRAY_MODULE && declaration.specifiers.some(bindsLeafArray))
   )
 }
 
-export function importsEffectArrayUnaliased(program: ESTree.Node): boolean {
-  if (program.type !== 'Program') {
-    return false
-  }
-
-  return Arr.some(
-    program.body,
+export function importsEffectArrayUnaliased(program: ESTree.Program): boolean {
+  return program.body.some(
     (statement) => statement.type === 'ImportDeclaration' && bindsArrayUnaliased(statement),
   )
 }

@@ -1,11 +1,7 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
-import * as Ref from 'effect/Ref'
-import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import {
-  isFunctionSignature,
+  type FunctionSignatureNode,
   lexicalTypeParameterNames,
   onFunctionSignatures,
 } from '../shared/function-signature.ts'
@@ -17,16 +13,14 @@ const PROMISE_TYPE_NAMES = new Set(['Promise', 'PromiseLike'])
 const MESSAGE =
   'This function exposes `unknown` to its caller. Parse the value at its boundary and return a named domain type.'
 
-function referencedAliasName(type: ESTree.TSType): Option.Option<string> {
+function referencedAliasName(type: ESTree.TSType): string | undefined {
   if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
-    return Option.none()
+    return undefined
   }
 
-  const applied = Option.fromNullishOr(type.typeArguments).pipe(
-    Option.exists((typeArguments) => typeArguments.params.length > 0),
-  )
+  const applied = (type.typeArguments?.params.length ?? 0) > 0
 
-  return applied ? Option.none() : Option.some(type.typeName.name)
+  return applied ? undefined : type.typeName.name
 }
 
 function resolvesToUnknown(
@@ -40,9 +34,7 @@ function resolvesToUnknown(
   }
 
   if (type.type === 'TSUnionType') {
-    return Arr.some(type.types, (member) =>
-      resolvesToUnknown(aliases, shadowedAliases, visited, member),
-    )
+    return type.types.some((member) => resolvesToUnknown(aliases, shadowedAliases, visited, member))
   }
 
   if (
@@ -50,93 +42,72 @@ function resolvesToUnknown(
     type.typeName.type === 'Identifier' &&
     PROMISE_TYPE_NAMES.has(type.typeName.name)
   ) {
-    return Option.fromNullishOr(type.typeArguments?.params[0]).pipe(
-      Option.exists((value) => resolvesToUnknown(aliases, shadowedAliases, visited, value)),
-    )
+    const value = type.typeArguments?.params[0]
+
+    return value !== undefined && resolvesToUnknown(aliases, shadowedAliases, visited, value)
   }
 
-  return referencedAliasName(type).pipe(
-    Option.filter((name) => !Arr.contains(visited, name) && !shadowedAliases.has(name)),
-    Option.flatMap((name) =>
-      Option.fromNullishOr(aliases.get(name)).pipe(
-        Option.filter((alias) => Predicate.isNullish(alias.typeParameters)),
-        Option.map((alias) =>
-          resolvesToUnknown(
-            aliases,
-            shadowedAliases,
-            Arr.append(visited, name),
-            alias.typeAnnotation,
-          ),
-        ),
-      ),
-    ),
-    Option.getOrElse(() => false),
-  )
+  const name = referencedAliasName(type)
+
+  if (name === undefined || visited.includes(name) || shadowedAliases.has(name)) {
+    return false
+  }
+
+  const alias = aliases.get(name)
+
+  if (alias === undefined || (alias.typeParameters ?? null) !== null) {
+    return false
+  }
+
+  return resolvesToUnknown(aliases, shadowedAliases, [...visited, name], alias.typeAnnotation)
 }
 
 function topLevelAlias(
   statement: ESTree.Directive | ESTree.Statement,
-): Option.Option<ESTree.TSTypeAliasDeclaration> {
+): ESTree.TSTypeAliasDeclaration | undefined {
   const declaration =
     statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement
 
   return declaration !== null && declaration.type === 'TSTypeAliasDeclaration'
-    ? Option.some(declaration)
-    : Option.none()
+    ? declaration
+    : undefined
 }
 
-function topLevelAliases(node: ESTree.Node): AliasesByName {
-  if (node.type !== 'Program') {
-    return new Map()
-  }
-
+function topLevelAliases(program: ESTree.Program): AliasesByName {
   return new Map(
-    Arr.getSomes(Arr.map(node.body, topLevelAlias)).map((alias) => [alias.id.name, alias]),
+    program.body
+      .map(topLevelAlias)
+      .filter((alias): alias is ESTree.TSTypeAliasDeclaration => alias !== undefined)
+      .map((alias) => [alias.id.name, alias]),
   )
 }
 
-function unknownReturnDiagnostic(
-  sourceCode: OxlintSourceCode,
-  aliases: AliasesByName,
-  node: ESTree.Node,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (!isFunctionSignature(node)) {
-    return Option.none()
-  }
-
-  return Option.fromNullishOr(node.returnType).pipe(
-    Option.map((annotation) => annotation.typeAnnotation),
-    Option.filter((type) =>
-      resolvesToUnknown(aliases, lexicalTypeParameterNames(sourceCode, node), [], type),
-    ),
-    Option.map((type) => Diagnostic.fromId({ node: type, messageId: 'unknownReturn' })),
-  )
-}
-
-export default Rule.define({
-  name: 'no-unknown-returns',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid functions whose return contract resolves to unknown',
+    docs: { description: 'forbid functions whose return contract resolves to unknown' },
     messages: { unknownReturn: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-    const aliases = yield* Ref.make<AliasesByName>(new Map())
+  },
+  create(context) {
+    let aliases: AliasesByName = new Map()
 
-    const report = (node: ESTree.Node) =>
-      Ref.get(aliases).pipe(
-        Effect.flatMap((known) =>
-          Option.match(unknownReturnDiagnostic(context.sourceCode, known, node), {
-            onNone: () => Effect.void,
-            onSome: context.report,
-          }),
-        ),
-      )
+    function reportUnknownReturn(node: FunctionSignatureNode) {
+      const type = node.returnType?.typeAnnotation
+
+      if (type === undefined) {
+        return
+      }
+
+      if (resolvesToUnknown(aliases, lexicalTypeParameterNames(node), [], type)) {
+        context.report({ node: type, messageId: 'unknownReturn' })
+      }
+    }
 
     return {
-      Program: (node: ESTree.Node) => Ref.set(aliases, topLevelAliases(node)),
-      ...onFunctionSignatures(report),
+      Program(program) {
+        aliases = topLevelAliases(program)
+      },
+      ...onFunctionSignatures(reportUnknownReturn),
     }
   },
 })

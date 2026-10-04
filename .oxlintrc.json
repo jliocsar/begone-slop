@@ -1,9 +1,9 @@
 {
-  "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
 
-  "extends": ["./node_modules/@effect/tsgo/oxlint-presets/recommended.json", "./preset.json"],
+  "extends": ["./preset.json"],
 
-  "plugins": ["typescript", "promise", "effecttsgo"],
+  "plugins": ["typescript", "promise"],
 
   "categories": {
     "correctness": "error",
@@ -21,9 +21,8 @@
       {
         "patterns": [
           {
-            "regex": "^effect$|^effect/testing$|^effect/unstable/[a-z0-9-]+$",
-            "allowTypeImports": true,
-            "message": "Import the leaf module, not the barrel: `effect/Effect`, `effect/unstable/schema/Schema`."
+            "regex": "^effect($|/)|^effect-oxlint$|^@effect/",
+            "message": "This repo lints Effect code without depending on Effect. Match Effect APIs by name and import path instead."
           }
         ]
       }
@@ -70,7 +69,6 @@
       "files": ["**/*.test.ts", "**/test/**/*.ts"],
       "rules": {
         "begone-slop/expect-padding": "error",
-        "effecttsgo/async-function": "off",
         "max-lines-per-function": "off",
         "typescript/no-non-null-assertion": "off",
         "typescript/no-confusing-void-expression": "off",

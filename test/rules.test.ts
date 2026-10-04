@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test'
-import * as Schema from 'effect/Schema'
-import * as SchemaParser from 'effect/SchemaParser'
+import preset from '../preset.json' with { type: 'json' }
 import plugin from '../src/index.ts'
 
 const OXLINT = ['bunx', '--bun', 'oxlint']
@@ -9,28 +8,13 @@ const FIXTURES = `${import.meta.dir}/fixtures`
 const VALID_FIXTURES = `${import.meta.dir}/fixtures/valid`
 const CONFIGS = `${import.meta.dir}/tmp`
 
-const PADDING_SPEC = [
-  { blankLine: 'always', prev: '*', next: 'return' },
-  { blankLine: 'always', prev: '*', next: 'block-like' },
-  { blankLine: 'always', prev: 'block-like', next: '*' },
-  { blankLine: 'always', prev: '*', next: ['function', 'class'] },
-  { blankLine: 'always', prev: ['function', 'class'], next: '*' },
-  { blankLine: 'always', prev: 'import', next: '*' },
-  { blankLine: 'any', prev: 'import', next: 'import' },
-  {
-    blankLine: 'any',
-    prev: ['singleline-const', 'singleline-let'],
-    next: ['singleline-const', 'singleline-let'],
-  },
-]
+const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
-type PaddingSpec = typeof PADDING_SPEC
-
-const CASES: { rule: string; lines: number[]; options?: PaddingSpec }[] = [
+const CASES: { rule: string; lines: number[] }[] = [
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
   { rule: 'no-shadowed-error-field', lines: [1, 2] },
   { rule: 'expect-padding', lines: [2, 4] },
-  { rule: 'padding-line-between-statements', lines: [2, 5], options: PADDING_SPEC },
+  { rule: 'padding-line-between-statements', lines: [2, 5] },
   { rule: 'statement-order', lines: [5] },
   { rule: 'no-switch', lines: [1, 2] },
   { rule: 'no-try-catch', lines: [1, 2] },
@@ -73,36 +57,8 @@ const CASES: { rule: string; lines: number[]; options?: PaddingSpec }[] = [
   { rule: 'no-runtime-typeof', lines: [1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10] },
 ]
 
-const OxlintReport = Schema.Struct({
-  diagnostics: Schema.Array(
-    Schema.Struct({
-      code: Schema.String,
-      message: Schema.String,
-      labels: Schema.NonEmptyArray(Schema.Struct({ span: Schema.Struct({ line: Schema.Finite }) })),
-    }),
-  ),
-})
-
-const decodeReport = SchemaParser.decodeUnknownSync(OxlintReport)
-
-const StatementSelector = Schema.Union([Schema.String, Schema.Array(Schema.String)])
-
-const ShippedPreset = Schema.Struct({
-  rules: Schema.Struct({
-    'begone-slop/padding-line-between-statements': Schema.Tuple([
-      Schema.String,
-      Schema.Array(
-        Schema.Struct({
-          blankLine: Schema.String,
-          prev: StatementSelector,
-          next: StatementSelector,
-        }),
-      ),
-    ]),
-  }),
-})
-
-const decodeShippedPreset = SchemaParser.decodeUnknownSync(ShippedPreset)
+const UNIX_REPORT_LINE =
+  /^[^:]+:(?<line>\d+):\d+: (?<message>.*) \[(?:Error|Warning)\/(?<code>[^\]]+)\]$/u
 
 const RULES_WITH_VALID_FIXTURE = new Set(
   globalThis.Array.from(new Bun.Glob('*.ts').scanSync({ cwd: VALID_FIXTURES }), (entry) =>
@@ -112,11 +68,10 @@ const RULES_WITH_VALID_FIXTURE = new Set(
 
 async function runRule(
   rule: string,
-  options: PaddingSpec | undefined,
   fixturePath: string,
-): Promise<{ lines: number[]; messages: string[] }> {
+): Promise<{ lines: number[]; messages: string[]; exitCode: number }> {
   const configPath = `${CONFIGS}/oxlint-${rule}.json`
-  const ruleSetting = options === undefined ? 'error' : ['error', options]
+  const ruleSetting = PRESET_RULE_SETTINGS.get(`begone-slop/${rule}`) ?? 'error'
 
   await Bun.write(
     configPath,
@@ -126,22 +81,29 @@ async function runRule(
     }),
   )
 
-  const result = await Bun.$`${OXLINT} -c ${configPath} -f json ${fixturePath}`.nothrow().quiet()
-  const reported = decodeReport(JSON.parse(result.stdout.toString())).diagnostics.filter(
-    (diagnostic) => diagnostic.code === `begone-slop(${rule})`,
-  )
+  const result = await Bun.$`${OXLINT} -c ${configPath} -f unix ${fixturePath}`.nothrow().quiet()
+  const reported = result.stdout
+    .toString()
+    .split('\n')
+    .flatMap((reportLine) => {
+      const diagnostic = UNIX_REPORT_LINE.exec(reportLine)?.groups
+
+      return diagnostic === undefined ? [] : [diagnostic]
+    })
+    .filter((diagnostic) => diagnostic['code'] === `begone-slop(${rule})`)
 
   return {
     lines: reported
-      .map((diagnostic) => diagnostic.labels[0].span.line)
+      .map((diagnostic) => Number(diagnostic['line']))
       .sort((left, right) => left - right),
-    messages: reported.map((diagnostic) => diagnostic.message),
+    messages: reported.map((diagnostic) => diagnostic['message'] ?? ''),
+    exitCode: result.exitCode,
   }
 }
 
-for (const { rule, lines, options } of CASES) {
+for (const { rule, lines } of CASES) {
   test(`${rule} rejects its fixture`, async () => {
-    const { lines: reported, messages } = await runRule(rule, options, `${FIXTURES}/${rule}.ts`)
+    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${rule}.ts`)
     const unrendered = messages.filter((message) => message.includes('{{') || message.length === 0)
 
     expect(reported).toEqual(lines)
@@ -151,19 +113,12 @@ for (const { rule, lines, options } of CASES) {
 
 for (const rule of RULES_WITH_VALID_FIXTURE) {
   test(`${rule} accepts its valid fixture`, async () => {
-    const options = CASES.find((testCase) => testCase.rule === rule)?.options
-    const { lines: reported } = await runRule(rule, options, `${VALID_FIXTURES}/${rule}.ts`)
+    const { lines: reported, exitCode } = await runRule(rule, `${VALID_FIXTURES}/${rule}.ts`)
 
+    expect(exitCode).toBe(0)
     expect(reported).toEqual([])
   })
 }
-
-test('the padding spec under test is the one the preset ships', async () => {
-  const preset = decodeShippedPreset(await Bun.file(`${import.meta.dir}/../preset.json`).json())
-  const shipped = preset.rules['begone-slop/padding-line-between-statements'][1]
-
-  expect(shipped).toEqual(PADDING_SPEC)
-})
 
 test('every rule the plugin defines is covered by both halves', () => {
   const defined = new Set(Object.keys(plugin.rules))

@@ -1,5 +1,4 @@
-import * as Option from 'effect/Option'
-import type { ESTree, OxlintSourceCode } from 'effect-oxlint'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
 
 export type FunctionOwner = ESTree.ArrowFunctionExpression | ESTree.Function
 
@@ -13,17 +12,17 @@ function isFunctionOwner(node: ESTree.Node): node is FunctionOwner {
   )
 }
 
-export function enclosingFunction(node: ESTree.Node): Option.Option<FunctionOwner> {
+export function enclosingFunction(node: ESTree.Node): FunctionOwner | undefined {
   const { parent } = node
 
   if (parent === null || parent.type === 'Program') {
-    return Option.none()
+    return undefined
   }
 
-  return isFunctionOwner(parent) ? Option.some(parent) : enclosingFunction(parent)
+  return isFunctionOwner(parent) ? parent : enclosingFunction(parent)
 }
 
-export function sourceKeyName(sourceCode: OxlintSourceCode, key: ESTree.PropertyKey): string {
+export function sourceKeyName(sourceCode: SourceCode, key: ESTree.PropertyKey): string {
   if (key.type === 'Identifier' || key.type === 'PrivateIdentifier') {
     return key.name
   }
@@ -31,29 +30,24 @@ export function sourceKeyName(sourceCode: OxlintSourceCode, key: ESTree.Property
   return key.type === 'Literal' ? String(key.value) : sourceCode.getText(key)
 }
 
-function inheritedFunctionName(
-  sourceCode: OxlintSourceCode,
-  owner: FunctionOwner,
-): Option.Option<string> {
+function inheritedFunctionName(sourceCode: SourceCode, owner: FunctionOwner): string | undefined {
   const { parent } = owner
 
   if (parent.type === 'VariableDeclarator' && parent.id.type === 'Identifier') {
-    return Option.some(parent.id.name)
+    return parent.id.name
   }
 
-  return parent.type === 'MethodDefinition'
-    ? Option.some(sourceKeyName(sourceCode, parent.key))
-    : Option.none()
+  return parent.type === 'MethodDefinition' ? sourceKeyName(sourceCode, parent.key) : undefined
 }
 
-export function functionName(
-  sourceCode: OxlintSourceCode,
-  owner: Option.Option<FunctionOwner>,
-): string {
-  return Option.flatMap(owner, (fn) =>
-    Option.orElse(
-      Option.map(Option.fromNullishOr(fn.id), (id) => id.name),
-      () => inheritedFunctionName(sourceCode, fn),
-    ),
-  ).pipe(Option.getOrElse(() => ANONYMOUS_FUNCTION_NAME))
+export function functionName(sourceCode: SourceCode, owner: FunctionOwner | undefined): string {
+  if (owner === undefined) {
+    return ANONYMOUS_FUNCTION_NAME
+  }
+
+  if (owner.id !== null && owner.id !== undefined) {
+    return owner.id.name
+  }
+
+  return inheritedFunctionName(sourceCode, owner) ?? ANONYMOUS_FUNCTION_NAME
 }

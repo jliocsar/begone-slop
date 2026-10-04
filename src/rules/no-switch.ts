@@ -1,9 +1,9 @@
-import type { Rule } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const MESSAGE =
   'A switch falls through silently and never reports a missing case. Use Match from Effect, which can be made exhaustive.'
 
-export default {
+export default defineRule({
   meta: { type: 'problem', docs: { description: MESSAGE } },
   create(context) {
     return {
@@ -12,4 +12,4 @@ export default {
       },
     }
   },
-} satisfies Rule
+})

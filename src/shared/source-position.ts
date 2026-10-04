@@ -1,5 +1,4 @@
-import * as Arr from 'effect/Array'
-import type { ESTree, Range, Span } from 'effect-oxlint'
+import type { ESTree, Range, Span } from '@oxlint/plugins'
 
 export function statementsOf(node: ESTree.Node): readonly ESTree.Node[] {
   if (node.type === 'SwitchCase') {
@@ -16,7 +15,11 @@ export function statementsOf(node: ESTree.Node): readonly ESTree.Node[] {
 export function adjacentPairs(
   body: readonly ESTree.Node[],
 ): readonly (readonly [ESTree.Node, ESTree.Node])[] {
-  return Arr.zip(body, body.slice(1))
+  return body.flatMap((previous, index): (readonly [ESTree.Node, ESTree.Node])[] => {
+    const current = body[index + 1]
+
+    return current === undefined ? [] : [[previous, current]]
+  })
 }
 
 export function blankLinesBetween(previous: Span, current: Span): number {

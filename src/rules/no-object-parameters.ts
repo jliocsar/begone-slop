@@ -1,11 +1,7 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
-import * as Ref from 'effect/Ref'
-import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import {
-  isFunctionSignature,
+  type FunctionSignatureNode,
   lexicalTypeParameterNames,
   onFunctionSignatures,
   parameterAnnotation,
@@ -18,16 +14,16 @@ const OBJECT_ANNOTATION_SUFFIX = /\s*:\s*object\s*$/u
 const MESSAGE =
   'Parameter `{{parameter}}` uses the broad `object` type. Accept a named owner type; parse external input at its boundary before calling this function.'
 
-function boundTypeName(node: ESTree.Node): Option.Option<string> {
+function boundTypeName(node: ESTree.Node): string | undefined {
   if (node.type === 'TSMappedType') {
-    return Option.some(node.key.name)
+    return node.key.name
   }
 
   if (node.type === 'TSInferType') {
-    return Option.some(node.typeParameter.name.name)
+    return node.typeParameter.name.name
   }
 
-  return Option.none()
+  return undefined
 }
 
 function enclosingBoundTypeNames(node: ESTree.Node): readonly string[] {
@@ -37,23 +33,24 @@ function enclosingBoundTypeNames(node: ESTree.Node): readonly string[] {
     return []
   }
 
-  return [...Option.toArray(boundTypeName(parent)), ...enclosingBoundTypeNames(parent)]
+  const bound = boundTypeName(parent)
+  const enclosing = enclosingBoundTypeNames(parent)
+
+  return bound === undefined ? enclosing : [bound, ...enclosing]
 }
 
-function shadowedAliasNames(sourceCode: OxlintSourceCode, node: ESTree.Node): ReadonlySet<string> {
-  return new Set([...lexicalTypeParameterNames(sourceCode, node), ...enclosingBoundTypeNames(node)])
+function shadowedAliasNames(node: ESTree.Node): ReadonlySet<string> {
+  return new Set([...lexicalTypeParameterNames(node), ...enclosingBoundTypeNames(node)])
 }
 
-function referencedAliasName(type: ESTree.TSType): Option.Option<string> {
+function referencedAliasName(type: ESTree.TSType): string | undefined {
   if (type.type !== 'TSTypeReference' || type.typeName.type !== 'Identifier') {
-    return Option.none()
+    return undefined
   }
 
-  const applied = Option.fromNullishOr(type.typeArguments).pipe(
-    Option.exists((typeArguments) => typeArguments.params.length > 0),
-  )
+  const applied = (type.typeArguments?.params.length ?? 0) > 0
 
-  return applied ? Option.none() : Option.some(type.typeName.name)
+  return applied ? undefined : type.typeName.name
 }
 
 function resolvesToObject(
@@ -67,22 +64,22 @@ function resolvesToObject(
   }
 
   if (type.type === 'TSUnionType') {
-    return Arr.some(type.types, (member) =>
-      resolvesToObject(aliases, shadowedAliases, visited, member),
-    )
+    return type.types.some((member) => resolvesToObject(aliases, shadowedAliases, visited, member))
   }
 
-  return referencedAliasName(type).pipe(
-    Option.filter((name) => !Arr.contains(visited, name) && !shadowedAliases.has(name)),
-    Option.flatMap((name) =>
-      Option.fromNullishOr(aliases.get(name)).pipe(
-        Option.map((alias) =>
-          resolvesToObject(aliases, shadowedAliases, Arr.append(visited, name), alias),
-        ),
-      ),
-    ),
-    Option.getOrElse(() => false),
-  )
+  const name = referencedAliasName(type)
+
+  if (name === undefined || visited.includes(name) || shadowedAliases.has(name)) {
+    return false
+  }
+
+  const alias = aliases.get(name)
+
+  if (alias === undefined) {
+    return false
+  }
+
+  return resolvesToObject(aliases, shadowedAliases, [...visited, name], alias)
 }
 
 function parameterLabel(parameter: ESTree.ParamPattern, parameterText: string): string {
@@ -93,83 +90,56 @@ function parameterLabel(parameter: ESTree.ParamPattern, parameterText: string): 
 
 function topLevelAlias(
   statement: ESTree.Directive | ESTree.Statement,
-): Option.Option<ESTree.TSTypeAliasDeclaration> {
+): ESTree.TSTypeAliasDeclaration | undefined {
   const declaration =
     statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement
 
   return declaration !== null &&
     declaration.type === 'TSTypeAliasDeclaration' &&
-    Predicate.isNullish(declaration.typeParameters)
-    ? Option.some(declaration)
-    : Option.none()
+    (declaration.typeParameters ?? null) === null
+    ? declaration
+    : undefined
 }
 
-function topLevelAliases(node: ESTree.Node): AliasesByName {
-  if (node.type !== 'Program') {
-    return new Map()
-  }
-
+function topLevelAliases(program: ESTree.Program): AliasesByName {
   return new Map(
-    Arr.getSomes(Arr.map(node.body, topLevelAlias)).map((alias) => [
-      alias.id.name,
-      alias.typeAnnotation,
-    ]),
+    program.body
+      .map(topLevelAlias)
+      .filter((alias): alias is ESTree.TSTypeAliasDeclaration => alias !== undefined)
+      .map((alias) => [alias.id.name, alias.typeAnnotation]),
   )
 }
 
-function objectParameterDiagnostics(
-  sourceCode: OxlintSourceCode,
-  aliases: AliasesByName,
-  node: ESTree.Node,
-): readonly Diagnostic.Diagnostic[] {
-  if (!isFunctionSignature(node)) {
-    return []
-  }
+export default defineRule({
+  meta: {
+    type: 'problem',
+    docs: { description: 'forbid parameters typed object, aliases to it included' },
+    messages: { objectParameter: MESSAGE },
+  },
+  create(context) {
+    let aliases: AliasesByName = new Map()
 
-  const shadowedAliases = shadowedAliasNames(sourceCode, node)
+    function reportObjectParameters(node: FunctionSignatureNode) {
+      const shadowedAliases = shadowedAliasNames(node)
 
-  return Arr.getSomes(
-    Arr.map(node.params, (parameter) =>
-      parameterAnnotation(parameter).pipe(
-        Option.map((annotation) => annotation.typeAnnotation),
-        Option.filter((type) => resolvesToObject(aliases, shadowedAliases, [], type)),
-        Option.map((type) =>
-          Diagnostic.fromId({
+      for (const parameter of node.params) {
+        const type = parameterAnnotation(parameter)?.typeAnnotation
+
+        if (type !== undefined && resolvesToObject(aliases, shadowedAliases, [], type)) {
+          context.report({
             node: type,
             messageId: 'objectParameter',
-            data: { parameter: parameterLabel(parameter, sourceCode.getText(parameter)) },
-          }),
-        ),
-      ),
-    ),
-  )
-}
-
-export default Rule.define({
-  name: 'no-object-parameters',
-  meta: Rule.meta({
-    type: 'problem',
-    description: 'forbid parameters typed object, aliases to it included',
-    messages: { objectParameter: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-    const aliases = yield* Ref.make<AliasesByName>(new Map())
-
-    const report = (node: ESTree.Node) =>
-      Ref.get(aliases).pipe(
-        Effect.flatMap((known) =>
-          Effect.forEach(
-            objectParameterDiagnostics(context.sourceCode, known, node),
-            context.report,
-            { discard: true },
-          ),
-        ),
-      )
+            data: { parameter: parameterLabel(parameter, context.sourceCode.getText(parameter)) },
+          })
+        }
+      }
+    }
 
     return {
-      Program: (node: ESTree.Node) => Ref.set(aliases, topLevelAliases(node)),
-      ...onFunctionSignatures(report),
+      Program(program) {
+        aliases = topLevelAliases(program)
+      },
+      ...onFunctionSignatures(reportObjectParameters),
     }
   },
 })

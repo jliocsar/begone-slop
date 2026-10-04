@@ -1,6 +1,5 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import { type Definition, type ESTree, type OxlintSourceCode, Scope } from 'effect-oxlint'
+import type { Definition, ESTree, SourceCode } from '@oxlint/plugins'
+import { findVariable } from './binding-scope.ts'
 
 const LAYER_BINDING = 'Layer'
 
@@ -34,13 +33,12 @@ function bindsEffectLayer(definition: Definition): boolean {
   )
 }
 
-export function isEffectLayerReference(sourceCode: OxlintSourceCode, node: ESTree.Node): boolean {
+export function isEffectLayerReference(sourceCode: SourceCode, node: ESTree.Node): boolean {
   if (node.type !== 'Identifier') {
     return false
   }
 
-  return Option.match(Scope.findVariableUp(sourceCode.getScope(node), node.name), {
-    onNone: () => false,
-    onSome: (variable) => Arr.some(variable.defs, bindsEffectLayer),
-  })
+  const variable = findVariable(sourceCode.getScope(node), node.name)
+
+  return variable !== undefined && variable.defs.some(bindsEffectLayer)
 }

@@ -1,6 +1,4 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import type { ESTree } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 
 export type TypeAliasEnvironment = ReadonlyMap<string, ESTree.TSType>
 
@@ -31,15 +29,15 @@ export const EMPTY_TYPE_ENVIRONMENT: TypeEnvironment = {
 
 function declaredStatement(
   statement: ESTree.Directive | ESTree.Statement,
-): Option.Option<ESTree.Node> {
+): ESTree.Node | undefined {
   if (
     statement.type === 'ExportNamedDeclaration' ||
     statement.type === 'ExportDefaultDeclaration'
   ) {
-    return Option.fromNullishOr(statement.declaration)
+    return statement.declaration ?? undefined
   }
 
-  return Option.some(statement)
+  return statement
 }
 
 function topLevelDeclarations(program: ESTree.Node): readonly ESTree.Node[] {
@@ -47,12 +45,14 @@ function topLevelDeclarations(program: ESTree.Node): readonly ESTree.Node[] {
     return []
   }
 
-  return Arr.getSomes(Arr.map(program.body, declaredStatement))
+  return program.body
+    .map(declaredStatement)
+    .filter((declaration): declaration is ESTree.Node => declaration !== undefined)
 }
 
 function boundNames(declaration: ESTree.Node): readonly string[] {
   if (declaration.type === 'ImportDeclaration') {
-    return Arr.map(declaration.specifiers, (specifier) => specifier.local.name)
+    return declaration.specifiers.map((specifier) => specifier.local.name)
   }
 
   if (
@@ -64,10 +64,7 @@ function boundNames(declaration: ESTree.Node): readonly string[] {
   }
 
   if (declaration.type === 'ClassDeclaration' || declaration.type === 'FunctionDeclaration') {
-    return Option.fromNullishOr(declaration.id).pipe(
-      Option.map((id): readonly string[] => [id.name]),
-      Option.getOrElse((): readonly string[] => []),
-    )
+    return declaration.id === null ? [] : [declaration.id.name]
   }
 
   return []
@@ -82,42 +79,48 @@ function isInterfaceDeclaration(node: ESTree.Node): node is ESTree.TSInterfaceDe
 }
 
 function duplicateNames(names: readonly string[]): readonly string[] {
-  return Arr.filter(names, (name, index) => Arr.contains(Arr.take(names, index), name))
+  return names.filter((name, index) => names.slice(0, index).includes(name))
 }
 
 function aliasesByName(
   aliases: readonly ESTree.TSTypeAliasDeclaration[],
 ): ReadonlyMap<string, ESTree.TSTypeAliasDeclaration> {
   return new Map(
-    Arr.map(Arr.reverse(aliases), (alias): readonly [string, ESTree.TSTypeAliasDeclaration] => [
-      alias.id.name,
-      alias,
-    ]),
+    aliases
+      .toReversed()
+      .map((alias): readonly [string, ESTree.TSTypeAliasDeclaration] => [alias.id.name, alias]),
   )
 }
 
 function interfacesByName(
   declarations: readonly ESTree.TSInterfaceDeclaration[],
 ): ReadonlyMap<string, readonly ESTree.TSInterfaceDeclaration[]> {
-  return new Map(Object.entries(Arr.groupBy(declarations, (declaration) => declaration.id.name)))
+  const grouped = new Map<string, ESTree.TSInterfaceDeclaration[]>()
+
+  for (const declaration of declarations) {
+    const name = declaration.id.name
+    grouped.set(name, [...(grouped.get(name) ?? []), declaration])
+  }
+
+  return grouped
 }
 
 export function createTypeEnvironment(program: ESTree.Node): TypeEnvironment {
   const declarations = topLevelDeclarations(program)
-  const aliases = Arr.filter(declarations, isTypeAliasDeclaration)
+  const aliases = declarations.filter(isTypeAliasDeclaration)
 
   return {
     aliases: aliasesByName(aliases),
-    interfaces: interfacesByName(Arr.filter(declarations, isInterfaceDeclaration)),
+    interfaces: interfacesByName(declarations.filter(isInterfaceDeclaration)),
     shadowedBuiltIns: new Set([
-      ...Arr.filter(Arr.flatMap(declarations, boundNames), (name) => BUILT_INS.has(name)),
-      ...duplicateNames(Arr.map(aliases, (alias) => alias.id.name)),
+      ...declarations.flatMap(boundNames).filter((name) => BUILT_INS.has(name)),
+      ...duplicateNames(aliases.map((alias) => alias.id.name)),
     ]),
   }
 }
 
-export function typeReferenceName(type: ESTree.TSTypeReference): Option.Option<string> {
-  return type.typeName.type === 'Identifier' ? Option.some(type.typeName.name) : Option.none()
+export function typeReferenceName(type: ESTree.TSTypeReference): string | undefined {
+  return type.typeName.type === 'Identifier' ? type.typeName.name : undefined
 }
 
 export function isBuiltIn(name: string, environment: TypeEnvironment): boolean {
@@ -138,8 +141,7 @@ export function isUnappliedReferenceTo(type: ESTree.TSType, name: string): boole
   }
 
   return (
-    Option.contains(typeReferenceName(unwrapped), name) &&
-    (unwrapped.typeArguments?.params.length ?? 0) === 0
+    typeReferenceName(unwrapped) === name && (unwrapped.typeArguments?.params.length ?? 0) === 0
   )
 }
 
@@ -154,41 +156,42 @@ function resolvedSubstitutionArgument(
     return type
   }
 
-  return typeReferenceName(unwrapped).pipe(
-    Option.filter((name) => !resolving.has(name)),
-    Option.flatMap((name) =>
-      Option.map(Option.fromNullishOr(base.get(name)), (substitution) =>
-        resolvedSubstitutionArgument(substitution, base, new Set([...resolving, name])),
-      ),
-    ),
-    Option.getOrElse(() => type),
-  )
+  const name = typeReferenceName(unwrapped)
+
+  if (name === undefined || resolving.has(name)) {
+    return type
+  }
+
+  const substitution = base.get(name)
+
+  if (substitution === undefined) {
+    return type
+  }
+
+  return resolvedSubstitutionArgument(substitution, base, new Set([...resolving, name]))
 }
 
 export function aliasSubstitution(
   alias: ESTree.TSTypeAliasDeclaration,
   type: ESTree.TSTypeReference,
   base: TypeAliasEnvironment,
-): Option.Option<TypeAliasEnvironment> {
+): TypeAliasEnvironment | undefined {
   const parameters = alias.typeParameters?.params ?? []
   const typeArguments = type.typeArguments?.params ?? []
+  let substitutions: TypeAliasEnvironment = base
 
-  return Arr.reduce(
-    parameters,
-    Option.some<TypeAliasEnvironment>(base),
-    (bindings, parameter, index) =>
-      Option.flatMap(bindings, (substitutions) =>
-        Option.map(
-          Option.fromNullishOr(typeArguments[index] ?? parameter.default),
-          (argument): TypeAliasEnvironment =>
-            new Map<string, ESTree.TSType>([
-              ...substitutions,
-              [
-                parameter.name.name,
-                resolvedSubstitutionArgument(argument, substitutions, new Set()),
-              ],
-            ]),
-        ),
-      ),
-  )
+  for (const [index, parameter] of parameters.entries()) {
+    const argument = typeArguments[index] ?? parameter.default
+
+    if (argument === undefined || argument === null) {
+      return undefined
+    }
+
+    substitutions = new Map<string, ESTree.TSType>([
+      ...substitutions,
+      [parameter.name.name, resolvedSubstitutionArgument(argument, substitutions, new Set())],
+    ])
+  }
+
+  return substitutions
 }

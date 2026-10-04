@@ -1,6 +1,5 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const LAYER_BINDING = 'Layer'
 
@@ -24,29 +23,23 @@ function isLayerProvideCall(node: ESTree.Node): boolean {
   )
 }
 
-function nestedProvides(node: ESTree.Node): readonly Diagnostic.Diagnostic[] {
-  if (node.type !== 'CallExpression' || !isLayerProvideCall(node)) {
-    return []
-  }
-
-  return Arr.map(Arr.filter(node.arguments, isLayerProvideCall), (argument) =>
-    Diagnostic.fromId({ node: argument, messageId: 'nestedLayerProvide' }),
-  )
-}
-
-export default Rule.define({
-  name: 'no-nested-layer-provide',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid nested Layer.provide calls',
+    docs: { description: 'forbid nested Layer.provide calls' },
     messages: { nestedLayerProvide: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      CallExpression: (node: ESTree.Node) =>
-        Effect.forEach(nestedProvides(node), context.report, { discard: true }),
+      CallExpression(node) {
+        if (!isLayerProvideCall(node)) {
+          return
+        }
+
+        for (const argument of node.arguments.filter(isLayerProvideCall)) {
+          context.report({ node: argument, messageId: 'nestedLayerProvide' })
+        }
+      },
     }
   },
 })

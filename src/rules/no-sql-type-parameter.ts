@@ -1,6 +1,5 @@
-import * as Effect from 'effect/Effect'
-import * as Predicate from 'effect/Predicate'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const SQL_TAG = 'sql'
 
@@ -20,32 +19,24 @@ function isSqlTag(tag: ESTree.Expression): boolean {
 }
 
 function hasTypeArguments(node: ESTree.TaggedTemplateExpression): boolean {
-  if (node.typeArguments !== undefined && node.typeArguments !== null) {
-    return true
-  }
-
-  return (
-    Predicate.hasProperty(node, 'typeParameters') &&
-    node.typeParameters !== undefined &&
-    node.typeParameters !== null
-  )
+  return node.typeArguments !== undefined && node.typeArguments !== null
 }
 
-export default Rule.define({
-  name: 'no-sql-type-parameter',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid sql<Type> tagged templates in favour of a typed query API or a schema',
+    docs: {
+      description: 'forbid sql<Type> tagged templates in favour of a typed query API or a schema',
+    },
     messages: { noSqlTypeParameter: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      TaggedTemplateExpression: (node: ESTree.Node) =>
-        node.type === 'TaggedTemplateExpression' && isSqlTag(node.tag) && hasTypeArguments(node)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'noSqlTypeParameter' }))
-          : Effect.void,
+      TaggedTemplateExpression(node) {
+        if (isSqlTag(node.tag) && hasTypeArguments(node)) {
+          context.report({ node, messageId: 'noSqlTypeParameter' })
+        }
+      },
     }
   },
 })

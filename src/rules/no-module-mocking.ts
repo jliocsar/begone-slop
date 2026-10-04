@@ -1,22 +1,17 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
-import {
-  type Definition,
-  Diagnostic,
-  type ESTree,
-  type OxlintSourceCode,
-  Rule,
-  RuleContext,
-  Scope,
-} from 'effect-oxlint'
+import type { Definition, ESTree, SourceCode } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
+import { findVariable } from '../shared/binding-scope.ts'
+import { stringLiteralValue } from '../shared/literal.ts'
 
 const RUNNER_GLOBALS = new Set(['vi', 'jest'])
 
-const VITEST_AND_JEST_METHODS = new Set(['doMock', 'mock', 'unstable_mockModule'])
+const VITEST_AND_JEST_METHODS: ReadonlySet<string> = new Set([
+  'doMock',
+  'mock',
+  'unstable_mockModule',
+])
 
-const BUN_METHODS = new Set(['module'])
+const BUN_METHODS: ReadonlySet<string> = new Set(['module'])
 
 const RUNNER_IMPORTS = [
   { source: 'vitest', imported: 'vi', methods: VITEST_AND_JEST_METHODS },
@@ -27,109 +22,110 @@ const RUNNER_IMPORTS = [
 const MESSAGE =
   'Replace module mocking with dependency injection through a real interface, service layer, or faithful test implementation.'
 
-function importedName(specifier: ESTree.Node): Option.Option<string> {
+function importedName(specifier: ESTree.Node): string | undefined {
   if (specifier.type !== 'ImportSpecifier') {
-    return Option.none()
+    return undefined
   }
 
   const { imported } = specifier
 
-  return Option.some(imported.type === 'Identifier' ? imported.name : imported.value)
+  return imported.type === 'Identifier' ? imported.name : imported.value
 }
 
-function importedRunnerMethods(definition: Definition): Option.Option<ReadonlySet<string>> {
+function importedRunnerMethods(definition: Definition): ReadonlySet<string> | undefined {
   const declaration = definition.parent
 
   if (definition.type !== 'ImportBinding' || declaration?.type !== 'ImportDeclaration') {
-    return Option.none()
+    return undefined
   }
 
-  return importedName(definition.node).pipe(
-    Option.flatMap((name) =>
-      Arr.findFirst(
-        RUNNER_IMPORTS,
-        (runner) => runner.source === declaration.source.value && runner.imported === name,
-      ),
-    ),
-    Option.map((runner) => runner.methods),
+  const name = importedName(definition.node)
+
+  if (name === undefined) {
+    return undefined
+  }
+
+  const runner = RUNNER_IMPORTS.find(
+    (candidate) => candidate.source === declaration.source.value && candidate.imported === name,
   )
+
+  return runner?.methods
 }
 
-function globalRunnerMethods(name: string): Option.Option<ReadonlySet<string>> {
-  return RUNNER_GLOBALS.has(name) ? Option.some(VITEST_AND_JEST_METHODS) : Option.none()
+function globalRunnerMethods(name: string): ReadonlySet<string> | undefined {
+  return RUNNER_GLOBALS.has(name) ? VITEST_AND_JEST_METHODS : undefined
 }
 
 function resolvedRunnerMethods(
-  sourceCode: OxlintSourceCode,
+  sourceCode: SourceCode,
   object: ESTree.IdentifierReference,
-): Option.Option<ReadonlySet<string>> {
-  return Option.match(Scope.findVariableUp(sourceCode.getScope(object), object.name), {
-    onNone: () => globalRunnerMethods(object.name),
-    onSome: (variable) =>
-      Arr.match(variable.defs, {
-        onEmpty: () => globalRunnerMethods(object.name),
-        onNonEmpty: (defs) => Arr.findFirst(defs, importedRunnerMethods),
-      }),
-  })
+): ReadonlySet<string> | undefined {
+  const variable = findVariable(sourceCode.getScope(object), object.name)
+
+  if (variable === undefined || variable.defs.length === 0) {
+    return globalRunnerMethods(object.name)
+  }
+
+  for (const definition of variable.defs) {
+    const methods = importedRunnerMethods(definition)
+
+    if (methods !== undefined) {
+      return methods
+    }
+  }
+
+  return undefined
 }
 
 function runnerMethods(
-  sourceCode: OxlintSourceCode,
+  sourceCode: SourceCode,
   object: ESTree.Expression,
-): Option.Option<ReadonlySet<string>> {
+): ReadonlySet<string> | undefined {
   if (object.type !== 'Identifier') {
-    return Option.none()
+    return undefined
   }
 
   const asGlobal = sourceCode.isGlobalReference(object)
     ? globalRunnerMethods(object.name)
-    : Option.none<ReadonlySet<string>>()
+    : undefined
 
-  return asGlobal.pipe(Option.orElse(() => resolvedRunnerMethods(sourceCode, object)))
+  return asGlobal ?? resolvedRunnerMethods(sourceCode, object)
 }
 
-function methodName(callee: ESTree.MemberExpression): Option.Option<string> {
+function methodName(callee: ESTree.MemberExpression): string | undefined {
   if (callee.computed) {
-    const { property } = callee
-
-    return property.type === 'Literal' && Predicate.isString(property.value)
-      ? Option.some(property.value)
-      : Option.none()
+    return stringLiteralValue(callee.property)
   }
 
-  return callee.property.type === 'Identifier' ? Option.some(callee.property.name) : Option.none()
+  return callee.property.type === 'Identifier' ? callee.property.name : undefined
 }
 
-function isModuleMockCall(sourceCode: OxlintSourceCode, node: ESTree.Node): boolean {
-  if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
+function isModuleMockCall(sourceCode: SourceCode, node: ESTree.CallExpression): boolean {
+  const { callee } = node
+
+  if (callee.type !== 'MemberExpression') {
     return false
   }
 
-  const { callee } = node
+  const methods = runnerMethods(sourceCode, callee.object)
+  const method = methodName(callee)
 
-  return runnerMethods(sourceCode, callee.object).pipe(
-    Option.flatMap((methods) =>
-      methodName(callee).pipe(Option.filter((method) => methods.has(method))),
-    ),
-    Option.isSome,
-  )
+  return methods !== undefined && method !== undefined && methods.has(method)
 }
 
-export default Rule.define({
-  name: 'no-module-mocking',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid vitest, jest and bun module mocking',
+    docs: { description: 'forbid vitest, jest and bun module mocking' },
     messages: { moduleMock: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      CallExpression: (node: ESTree.Node) =>
-        isModuleMockCall(context.sourceCode, node)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'moduleMock' }))
-          : Effect.void,
+      CallExpression(node) {
+        if (isModuleMockCall(context.sourceCode, node)) {
+          context.report({ node, messageId: 'moduleMock' })
+        }
+      },
     }
   },
 })

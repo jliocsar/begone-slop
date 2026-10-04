@@ -1,6 +1,4 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import type { ESTree } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 import {
   aliasSubstitution,
   isBuiltIn,
@@ -21,12 +19,10 @@ function memberValueTypes(
   members: readonly ESTree.TSSignature[],
   substitutions: TypeAliasEnvironment,
 ): readonly ResolvedType[] {
-  return Arr.getSomes(
-    Arr.map(members, (member) =>
-      member.type === 'TSIndexSignature'
-        ? Option.some<ResolvedType>({ type: member.typeAnnotation.typeAnnotation, substitutions })
-        : Option.none(),
-    ),
+  return members.flatMap((member): readonly ResolvedType[] =>
+    member.type === 'TSIndexSignature'
+      ? [{ type: member.typeAnnotation.typeAnnotation, substitutions }]
+      : [],
   )
 }
 
@@ -35,10 +31,9 @@ function argumentValueType(
   index: number,
   substitutions: TypeAliasEnvironment,
 ): readonly ResolvedType[] {
-  return Option.fromNullishOr(reference.typeArguments?.params[index]).pipe(
-    Option.map((type): readonly ResolvedType[] => [{ type, substitutions }]),
-    Option.getOrElse((): readonly ResolvedType[] => []),
-  )
+  const type = reference.typeArguments?.params[index]
+
+  return type === undefined ? [] : [{ type, substitutions }]
 }
 
 function argumentValueTypes(
@@ -48,10 +43,11 @@ function argumentValueTypes(
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
 ): readonly ResolvedType[] {
-  return Option.fromNullishOr(reference.typeArguments?.params[index]).pipe(
-    Option.map((type) => dictionaryValueTypes(type, environment, substitutions, resolvingAliases)),
-    Option.getOrElse((): readonly ResolvedType[] => []),
-  )
+  const type = reference.typeArguments?.params[index]
+
+  return type === undefined
+    ? []
+    : dictionaryValueTypes(type, environment, substitutions, resolvingAliases)
 }
 
 function builtInValueTypes(
@@ -60,20 +56,16 @@ function builtInValueTypes(
   environment: TypeEnvironment,
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
-): Option.Option<readonly ResolvedType[]> {
+): readonly ResolvedType[] | undefined {
   if (!isBuiltIn(name, environment)) {
-    return Option.none()
+    return undefined
   }
 
   if (TRANSPARENT_WRAPPERS.has(name) || name === 'Pick' || name === 'Omit') {
-    return Option.some(
-      argumentValueTypes(reference, 0, environment, substitutions, resolvingAliases),
-    )
+    return argumentValueTypes(reference, 0, environment, substitutions, resolvingAliases)
   }
 
-  return name === 'Record'
-    ? Option.some(argumentValueType(reference, 1, substitutions))
-    : Option.none()
+  return name === 'Record' ? argumentValueType(reference, 1, substitutions) : undefined
 }
 
 function aliasValueTypes(
@@ -83,19 +75,23 @@ function aliasValueTypes(
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
 ): readonly ResolvedType[] {
-  return Option.fromNullishOr(environment.aliases.get(name)).pipe(
-    Option.filter(() => !resolvingAliases.has(name)),
-    Option.flatMap((alias) =>
-      Option.map(aliasSubstitution(alias, reference, substitutions), (bindings) =>
-        dictionaryValueTypes(
-          alias.typeAnnotation,
-          environment,
-          bindings,
-          new Set([...resolvingAliases, name]),
-        ),
-      ),
-    ),
-    Option.getOrElse((): readonly ResolvedType[] => []),
+  const alias = environment.aliases.get(name)
+
+  if (alias === undefined || resolvingAliases.has(name)) {
+    return []
+  }
+
+  const bindings = aliasSubstitution(alias, reference, substitutions)
+
+  if (bindings === undefined) {
+    return []
+  }
+
+  return dictionaryValueTypes(
+    alias.typeAnnotation,
+    environment,
+    bindings,
+    new Set([...resolvingAliases, name]),
   )
 }
 
@@ -106,18 +102,17 @@ function referenceValueTypes(
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
 ): readonly ResolvedType[] {
-  const substitution = Option.fromNullishOr(substitutions.get(name))
+  const substitution = substitutions.get(name)
 
-  if (Option.isSome(substitution)) {
-    return isUnappliedReferenceTo(substitution.value, name)
+  if (substitution !== undefined) {
+    return isUnappliedReferenceTo(substitution, name)
       ? []
-      : dictionaryValueTypes(substitution.value, environment, substitutions, resolvingAliases)
+      : dictionaryValueTypes(substitution, environment, substitutions, resolvingAliases)
   }
 
-  return builtInValueTypes(reference, name, environment, substitutions, resolvingAliases).pipe(
-    Option.getOrElse(() =>
-      aliasValueTypes(name, reference, environment, substitutions, resolvingAliases),
-    ),
+  return (
+    builtInValueTypes(reference, name, environment, substitutions, resolvingAliases) ??
+    aliasValueTypes(name, reference, environment, substitutions, resolvingAliases)
   )
 }
 
@@ -134,22 +129,20 @@ export function dictionaryValueTypes(
   }
 
   if (unwrapped.type === 'TSMappedType') {
-    return Option.fromNullishOr(unwrapped.typeAnnotation).pipe(
-      Option.map((value): readonly ResolvedType[] => [{ type: value, substitutions }]),
-      Option.getOrElse((): readonly ResolvedType[] => []),
-    )
+    const value = unwrapped.typeAnnotation
+
+    return value === null || value === undefined ? [] : [{ type: value, substitutions }]
   }
 
   if (unwrapped.type !== 'TSTypeReference') {
     return []
   }
 
-  return typeReferenceName(unwrapped).pipe(
-    Option.map((name) =>
-      referenceValueTypes(unwrapped, name, environment, substitutions, resolvingAliases),
-    ),
-    Option.getOrElse((): readonly ResolvedType[] => []),
-  )
+  const name = typeReferenceName(unwrapped)
+
+  return name === undefined
+    ? []
+    : referenceValueTypes(unwrapped, name, environment, substitutions, resolvingAliases)
 }
 
 export function resolvesToDictionary(

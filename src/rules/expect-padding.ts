@@ -1,8 +1,5 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import { pipe } from 'effect/Function'
-import * as Option from 'effect/Option'
-import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
+import type { Diagnostic, ESTree, SourceCode } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import {
   adjacentPairs,
   blankLinesBetween,
@@ -39,50 +36,45 @@ function isExpectStatement(statement: ESTree.Node): boolean {
 }
 
 function denseGap(
-  sourceCode: OxlintSourceCode,
+  sourceCode: SourceCode,
   previous: ESTree.Node,
   current: ESTree.Node,
-): Option.Option<Diagnostic.Diagnostic> {
+): Diagnostic | undefined {
   const comments = sourceCode.getCommentsBefore(current)
   const introduced = comments.some((comment) => comment.loc.start.line > previous.loc.end.line)
 
-  return pipe(
-    current,
-    Option.liftPredicate(() => !introduced && blankLinesBetween(previous, current) > 0),
-    Option.map(() =>
-      Diagnostic.withFix(
-        Diagnostic.fromId({ node: current, messageId: 'denseExpectBlock' }),
-        (fixer) =>
-          fixer.replaceTextRange(
-            [comments.at(-1)?.range[1] ?? previous.range[1], current.range[0]],
-            `\n${' '.repeat(current.loc.start.column)}`,
-          ),
+  if (introduced || blankLinesBetween(previous, current) <= 0) {
+    return undefined
+  }
+
+  return {
+    node: current,
+    messageId: 'denseExpectBlock',
+    fix: (fixer) =>
+      fixer.replaceTextRange(
+        [comments.at(-1)?.range[1] ?? previous.range[1], current.range[0]],
+        `\n${' '.repeat(current.loc.start.column)}`,
       ),
-    ),
-  )
+  }
 }
 
-function fenceGap(
-  previous: ESTree.Node,
-  current: ESTree.Node,
-): Option.Option<Diagnostic.Diagnostic> {
-  return pipe(
-    current,
-    Option.liftPredicate(() => blankLinesBetween(previous, current) === 0),
-    Option.map(() =>
-      Diagnostic.withFix(
-        Diagnostic.fromId({ node: current, messageId: 'fenceExpectBlock' }),
-        (fixer) => fixer.insertTextBeforeRange(lineStartRange(current), '\n'),
-      ),
-    ),
-  )
+function fenceGap(previous: ESTree.Node, current: ESTree.Node): Diagnostic | undefined {
+  if (blankLinesBetween(previous, current) !== 0) {
+    return undefined
+  }
+
+  return {
+    node: current,
+    messageId: 'fenceExpectBlock',
+    fix: (fixer) => fixer.insertTextBeforeRange(lineStartRange(current), '\n'),
+  }
 }
 
 function gapDiagnostic(
-  sourceCode: OxlintSourceCode,
+  sourceCode: SourceCode,
   previous: ESTree.Node,
   current: ESTree.Node,
-): Option.Option<Diagnostic.Diagnostic> {
+): Diagnostic | undefined {
   const previousIsExpect = isExpectStatement(previous)
   const currentIsExpect = isExpectStatement(current)
 
@@ -90,33 +82,31 @@ function gapDiagnostic(
     return denseGap(sourceCode, previous, current)
   }
 
-  return previousIsExpect || currentIsExpect ? fenceGap(previous, current) : Option.none()
+  return previousIsExpect || currentIsExpect ? fenceGap(previous, current) : undefined
 }
 
-export default Rule.define({
-  name: 'expect-padding',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'layout',
-    description: 'require a blank line around a run of expect() calls and none inside it',
+    docs: {
+      description: 'require a blank line around a run of expect() calls and none inside it',
+    },
     fixable: 'whitespace',
     messages: {
       fenceExpectBlock: 'Add a blank line between this and the adjacent expect() block.',
       denseExpectBlock: 'Remove the blank line(s) between consecutive expect() calls.',
     },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
+  },
+  create(context) {
+    const checkBody = (node: ESTree.Node) => {
+      for (const [previous, current] of adjacentPairs(statementsOf(node))) {
+        const diagnostic = gapDiagnostic(context.sourceCode, previous, current)
 
-    const checkBody = (node: ESTree.Node) =>
-      Effect.forEach(
-        Arr.getSomes(
-          adjacentPairs(statementsOf(node)).map(([previous, current]) =>
-            gapDiagnostic(context.sourceCode, previous, current),
-          ),
-        ),
-        context.report,
-        { discard: true },
-      )
+        if (diagnostic !== undefined) {
+          context.report(diagnostic)
+        }
+      }
+    }
 
     return {
       Program: checkBody,

@@ -1,9 +1,10 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
-import * as Schema from 'effect/Schema'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree, Options } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
+
+type ReexportOptions = {
+  readonly allowedFilenames: readonly string[]
+  readonly routeDirectoryNames: readonly string[]
+}
 
 const DEFAULT_ALLOWED_FILENAMES = ['loading.tsx', 'not-found.tsx']
 
@@ -12,22 +13,21 @@ const DEFAULT_ROUTE_DIRECTORY_NAMES = ['app']
 const MESSAGE =
   'A module that only re-exports adds a hop without adding meaning, and hides where a symbol actually lives. Import from the owning module, or override this rule for a deliberate public entrypoint.'
 
-const Options = Schema.Struct({
-  allowedFilenames: Schema.Array(Schema.String).pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_ALLOWED_FILENAMES)),
-  ),
-  routeDirectoryNames: Schema.Array(Schema.String).pipe(
-    Schema.withDecodingDefault(Effect.succeed(DEFAULT_ROUTE_DIRECTORY_NAMES)),
-  ),
-}).pipe(Schema.withDecodingDefault(Effect.succeed({})))
+function configuredOptions(options: Readonly<Options>): ReexportOptions {
+  // SAFETY: oxlint validates configured options against meta.schema before create runs
+  const configured = options[0] as Partial<ReexportOptions> | undefined
 
-type Options = typeof Options.Type
-
-function isDirective(statement: ESTree.Node): boolean {
-  return statement.type === 'ExpressionStatement' && Predicate.isString(statement.directive)
+  return {
+    allowedFilenames: configured?.allowedFilenames ?? DEFAULT_ALLOWED_FILENAMES,
+    routeDirectoryNames: configured?.routeDirectoryNames ?? DEFAULT_ROUTE_DIRECTORY_NAMES,
+  }
 }
 
-function isSourcedReexport(statement: ESTree.Node): boolean {
+function isDirective(statement: ESTree.Directive | ESTree.Statement): boolean {
+  return statement.type === 'ExpressionStatement' && (statement.directive ?? null) !== null
+}
+
+function isSourcedReexport(statement: ESTree.Directive | ESTree.Statement): boolean {
   if (statement.type === 'ExportAllDeclaration') {
     return true
   }
@@ -35,36 +35,28 @@ function isSourcedReexport(statement: ESTree.Node): boolean {
   return statement.type === 'ExportNamedDeclaration' && statement.source !== null
 }
 
-function isExemptRouteFile(filename: string, options: Options): boolean {
+function isExemptRouteFile(filename: string, options: ReexportOptions): boolean {
   const segments = filename.replaceAll('\\', '/').split('/')
+  const basename = segments.at(-1)
 
-  return Arr.last(segments).pipe(
-    Option.filter((basename) => Arr.contains(options.allowedFilenames, basename)),
-    Option.filter(() =>
-      Arr.some(segments, (segment) => Arr.contains(options.routeDirectoryNames, segment)),
-    ),
-    Option.isSome,
+  return (
+    basename !== undefined &&
+    options.allowedFilenames.includes(basename) &&
+    segments.some((segment) => options.routeDirectoryNames.includes(segment))
   )
 }
 
-function isReexportOnly(node: ESTree.Node): boolean {
-  if (node.type !== 'Program') {
-    return false
-  }
+function isReexportOnly(program: ESTree.Program): boolean {
+  const statements = program.body.filter((statement) => !isDirective(statement))
 
-  const statements = Arr.filter(node.body, (statement) => !isDirective(statement))
-
-  return Arr.isReadonlyArrayNonEmpty(statements) && Arr.every(statements, isSourcedReexport)
+  return statements.length > 0 && statements.every(isSourcedReexport)
 }
 
-export default Rule.define({
-  name: 'no-reexport-only-modules',
+export default defineRule({
   meta: {
-    ...Rule.meta({
-      type: 'problem',
-      description: 'forbid modules whose only statements re-export another module',
-      messages: { reexportOnlyModule: MESSAGE },
-    }),
+    type: 'problem',
+    docs: { description: 'forbid modules whose only statements re-export another module' },
+    messages: { reexportOnlyModule: MESSAGE },
     schema: [
       {
         type: 'object',
@@ -76,19 +68,17 @@ export default Rule.define({
       },
     ],
   },
-  options: Options,
-  create: function* (options) {
-    const context = yield* RuleContext
-
-    if (isExemptRouteFile(context.filename, options)) {
+  create(context) {
+    if (isExemptRouteFile(context.filename, configuredOptions(context.options))) {
       return {}
     }
 
     return {
-      Program: (node: ESTree.Node) =>
-        isReexportOnly(node)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'reexportOnlyModule' }))
-          : Effect.void,
+      Program(program) {
+        if (isReexportOnly(program)) {
+          context.report({ node: program, messageId: 'reexportOnlyModule' })
+        }
+      },
     }
   },
 })

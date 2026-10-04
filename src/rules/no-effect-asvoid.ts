@@ -1,4 +1,4 @@
-import type { Rule } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const OBJECT_NAME = 'Effect'
 
@@ -7,7 +7,7 @@ const MEMBER_NAME = 'asVoid'
 const MESSAGE =
   'Effect.asVoid throws away a success value the caller may still want. Return the effect unchanged when its success type is already void.'
 
-export default {
+export default defineRule({
   meta: { type: 'problem', docs: { description: MESSAGE } },
   create(context) {
     return {
@@ -24,4 +24,4 @@ export default {
       },
     }
   },
-} satisfies Rule
+})

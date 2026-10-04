@@ -1,5 +1,5 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const PIPE_PROPERTY = 'pipe'
 
@@ -19,21 +19,19 @@ function isOversizedPipeCall(node: ESTree.CallExpression): boolean {
   )
 }
 
-export default Rule.define({
-  name: 'pipe-max-arguments',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid a `.pipe()` call with more than 20 arguments',
+    docs: { description: 'forbid a `.pipe()` call with more than 20 arguments' },
     messages: { pipeMaxArguments: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      CallExpression: (node: ESTree.Node) =>
-        node.type === 'CallExpression' && isOversizedPipeCall(node)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'pipeMaxArguments' }))
-          : Effect.void,
+      CallExpression(node) {
+        if (isOversizedPipeCall(node)) {
+          context.report({ node, messageId: 'pipeMaxArguments' })
+        }
+      },
     }
   },
 })

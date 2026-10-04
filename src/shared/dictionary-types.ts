@@ -1,6 +1,4 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import type { ESTree } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 import { dictionaryValueTypes } from './dictionary-values.ts'
 import {
   aliasSubstitution,
@@ -29,58 +27,56 @@ function isEffectivelyEmptyMember(member: ESTree.TSSignature): boolean {
     return false
   }
 
-  return Option.fromNullishOr(member.typeAnnotation).pipe(
-    Option.exists((annotation) => isNeverType(annotation.typeAnnotation)),
-  )
+  const annotation = member.typeAnnotation
+
+  return annotation !== null && annotation !== undefined && isNeverType(annotation.typeAnnotation)
 }
 
 function isEffectivelyEmptyTypeLiteral(type: ESTree.TSTypeLiteral): boolean {
-  return type.members.length === 0 || Arr.every(type.members, isEffectivelyEmptyMember)
+  return type.members.length === 0 || type.members.every(isEffectivelyEmptyMember)
 }
 
 function isEffectivelyEmptyInterface(
   declarations: readonly ESTree.TSInterfaceDeclaration[],
 ): boolean {
-  if (declarations.length !== 1) {
+  const [declaration] = declarations
+
+  if (declarations.length !== 1 || declaration === undefined) {
     return false
   }
 
-  return Arr.head(declarations).pipe(
-    Option.exists(
-      (declaration) =>
-        declaration.extends.length === 0 &&
-        (declaration.body.body.length === 0 ||
-          Arr.every(declaration.body.body, isEffectivelyEmptyMember)),
-    ),
+  return (
+    declaration.extends.length === 0 &&
+    (declaration.body.body.length === 0 || declaration.body.body.every(isEffectivelyEmptyMember))
   )
 }
 
-function unsafeKeywordValue(type: ESTree.TSType): Option.Option<UnsafeValue> {
+function unsafeKeywordValue(type: ESTree.TSType): UnsafeValue | undefined {
   if (type.type === 'TSUnknownKeyword') {
-    return Option.some('unknown')
+    return 'unknown'
   }
 
   if (type.type === 'TSAnyKeyword') {
-    return Option.some('any')
+    return 'any'
   }
 
   if (type.type === 'TSObjectKeyword') {
-    return Option.some('object')
+    return 'object'
   }
 
   return type.type === 'TSTypeLiteral' && isEffectivelyEmptyTypeLiteral(type)
-    ? Option.some('empty-object')
-    : Option.none()
+    ? 'empty-object'
+    : undefined
 }
 
 function unsafeIntersectionValue(
-  members: readonly Option.Option<UnsafeValue>[],
-): Option.Option<UnsafeValue> {
-  if (Arr.some(members, (member) => Option.contains(member, 'any'))) {
-    return Option.some('any')
+  members: readonly (UnsafeValue | undefined)[],
+): UnsafeValue | undefined {
+  if (members.includes('any')) {
+    return 'any'
   }
 
-  return Arr.every(members, Option.isSome) ? Option.flatten(Arr.head(members)) : Option.none()
+  return members.every((member) => member !== undefined) ? members[0] : undefined
 }
 
 function unsafeAliasValue(
@@ -89,19 +85,24 @@ function unsafeAliasValue(
   environment: TypeEnvironment,
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
-): Option.Option<UnsafeValue> {
-  return Option.fromNullishOr(environment.aliases.get(name)).pipe(
-    Option.filter(() => !resolvingAliases.has(name)),
-    Option.flatMap((alias) =>
-      Option.flatMap(aliasSubstitution(alias, reference, substitutions), (bindings) =>
-        unsafeDirectValue(
-          alias.typeAnnotation,
-          environment,
-          bindings,
-          new Set([...resolvingAliases, name]),
-        ),
-      ),
-    ),
+): UnsafeValue | undefined {
+  const alias = environment.aliases.get(name)
+
+  if (alias === undefined || resolvingAliases.has(name)) {
+    return undefined
+  }
+
+  const bindings = aliasSubstitution(alias, reference, substitutions)
+
+  if (bindings === undefined) {
+    return undefined
+  }
+
+  return unsafeDirectValue(
+    alias.typeAnnotation,
+    environment,
+    bindings,
+    new Set([...resolvingAliases, name]),
   )
 }
 
@@ -111,12 +112,14 @@ function unsafeDeclaredValue(
   environment: TypeEnvironment,
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
-): Option.Option<UnsafeValue> {
-  return Option.match(Option.fromNullishOr(environment.interfaces.get(name)), {
-    onSome: (declarations) =>
-      isEffectivelyEmptyInterface(declarations) ? Option.some('empty-object') : Option.none(),
-    onNone: () => unsafeAliasValue(name, reference, environment, substitutions, resolvingAliases),
-  })
+): UnsafeValue | undefined {
+  const declarations = environment.interfaces.get(name)
+
+  if (declarations === undefined) {
+    return unsafeAliasValue(name, reference, environment, substitutions, resolvingAliases)
+  }
+
+  return isEffectivelyEmptyInterface(declarations) ? 'empty-object' : undefined
 }
 
 function unsafeReferenceValue(
@@ -125,21 +128,24 @@ function unsafeReferenceValue(
   environment: TypeEnvironment,
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
-): Option.Option<UnsafeValue> {
+): UnsafeValue | undefined {
   if (TRANSPARENT_WRAPPERS.has(name) && isBuiltIn(name, environment)) {
-    return Option.flatMap(Option.fromNullishOr(reference.typeArguments?.params[0]), (wrapped) =>
-      unsafeDirectValue(wrapped, environment, substitutions, resolvingAliases),
-    )
+    const wrapped = reference.typeArguments?.params[0]
+
+    return wrapped === undefined
+      ? undefined
+      : unsafeDirectValue(wrapped, environment, substitutions, resolvingAliases)
   }
 
-  return Option.match(Option.fromNullishOr(substitutions.get(name)), {
-    onSome: (substitution) =>
-      isUnappliedReferenceTo(substitution, name)
-        ? Option.none()
-        : unsafeDirectValue(substitution, environment, substitutions, resolvingAliases),
-    onNone: () =>
-      unsafeDeclaredValue(name, reference, environment, substitutions, resolvingAliases),
-  })
+  const substitution = substitutions.get(name)
+
+  if (substitution === undefined) {
+    return unsafeDeclaredValue(name, reference, environment, substitutions, resolvingAliases)
+  }
+
+  return isUnappliedReferenceTo(substitution, name)
+    ? undefined
+    : unsafeDirectValue(substitution, environment, substitutions, resolvingAliases)
 }
 
 function unsafeDirectValue(
@@ -147,37 +153,40 @@ function unsafeDirectValue(
   environment: TypeEnvironment,
   substitutions: TypeAliasEnvironment,
   resolvingAliases: ReadonlySet<string>,
-): Option.Option<UnsafeValue> {
+): UnsafeValue | undefined {
   const unwrapped = unwrapTransparentType(type)
   const keyword = unsafeKeywordValue(unwrapped)
 
-  if (Option.isSome(keyword)) {
+  if (keyword !== undefined) {
     return keyword
   }
 
   if (unwrapped.type === 'TSUnionType') {
-    return Arr.some(unwrapped.types, (member) =>
-      Option.isSome(unsafeDirectValue(member, environment, substitutions, resolvingAliases)),
+    return unwrapped.types.some(
+      (member) =>
+        unsafeDirectValue(member, environment, substitutions, resolvingAliases) !== undefined,
     )
-      ? Option.some('union')
-      : Option.none()
+      ? 'union'
+      : undefined
   }
 
   if (unwrapped.type === 'TSIntersectionType') {
     return unsafeIntersectionValue(
-      Arr.map(unwrapped.types, (member) =>
+      unwrapped.types.map((member) =>
         unsafeDirectValue(member, environment, substitutions, resolvingAliases),
       ),
     )
   }
 
   if (unwrapped.type !== 'TSTypeReference') {
-    return Option.none()
+    return undefined
   }
 
-  return Option.flatMap(typeReferenceName(unwrapped), (name) =>
-    unsafeReferenceValue(unwrapped, name, environment, substitutions, resolvingAliases),
-  )
+  const name = typeReferenceName(unwrapped)
+
+  return name === undefined
+    ? undefined
+    : unsafeReferenceValue(unwrapped, name, environment, substitutions, resolvingAliases)
 }
 
 function unsafeDictionary(unsafeValue: UnsafeValue): UnsafeDictionary {
@@ -187,18 +196,23 @@ function unsafeDictionary(unsafeValue: UnsafeValue): UnsafeDictionary {
 export function classifyUnsafeDictionaryValue(
   valueType: ESTree.TSType,
   environment: TypeEnvironment,
-): Option.Option<UnsafeDictionary> {
-  return Option.map(
-    unsafeDirectValue(valueType, environment, new Map(), new Set()),
-    unsafeDictionary,
-  )
+): UnsafeDictionary | undefined {
+  const unsafeValue = unsafeDirectValue(valueType, environment, new Map(), new Set())
+
+  return unsafeValue === undefined ? undefined : unsafeDictionary(unsafeValue)
 }
 
 export function classifyUnsafeDictionary(
   type: ESTree.TSType,
   environment: TypeEnvironment,
-): Option.Option<UnsafeDictionary> {
-  return Arr.findFirst(dictionaryValueTypes(type, environment, new Map(), new Set()), (value) =>
-    unsafeDirectValue(value.type, environment, value.substitutions, new Set()),
-  ).pipe(Option.map(unsafeDictionary))
+): UnsafeDictionary | undefined {
+  for (const value of dictionaryValueTypes(type, environment, new Map(), new Set())) {
+    const unsafeValue = unsafeDirectValue(value.type, environment, value.substitutions, new Set())
+
+    if (unsafeValue !== undefined) {
+      return unsafeDictionary(unsafeValue)
+    }
+  }
+
+  return undefined
 }

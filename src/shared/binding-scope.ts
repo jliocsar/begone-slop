@@ -1,6 +1,4 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import type { ESTree, OxlintScope, Variable } from 'effect-oxlint'
+import type { ESTree, Scope, Variable } from '@oxlint/plugins'
 
 const FUNCTION_BOUNDARY_TYPES = new Set([
   'ArrowFunctionExpression',
@@ -10,41 +8,56 @@ const FUNCTION_BOUNDARY_TYPES = new Set([
   'TSEmptyBodyFunctionExpression',
 ])
 
-export function functionBoundary(node: ESTree.Node): Option.Option<ESTree.Node> {
+export function findVariable(scope: Scope, name: string): Variable | undefined {
+  const variable = scope.set.get(name)
+
+  if (variable !== undefined) {
+    return variable
+  }
+
+  return scope.upper === null ? undefined : findVariable(scope.upper, name)
+}
+
+export function functionBoundary(node: ESTree.Node): ESTree.Node | undefined {
   const { parent } = node
 
   if (parent === null || parent.type === 'Program') {
-    return Option.none()
+    return undefined
   }
 
-  return FUNCTION_BOUNDARY_TYPES.has(parent.type) ? Option.some(parent) : functionBoundary(parent)
+  return FUNCTION_BOUNDARY_TYPES.has(parent.type) ? parent : functionBoundary(parent)
 }
 
 export function hasSameBoundary(
-  left: Option.Option<ESTree.Node>,
-  right: Option.Option<ESTree.Node>,
+  left: ESTree.Node | undefined,
+  right: ESTree.Node | undefined,
 ): boolean {
-  return Option.getOrUndefined(left) === Option.getOrUndefined(right)
+  return left === right
 }
 
 export function resolvedVariableForIdentifier(
-  scopes: readonly OxlintScope[],
+  scopes: readonly Scope[],
   identifier: ESTree.IdentifierReference,
-): Option.Option<Variable> {
-  return Arr.findFirst(
-    Arr.flatMap(scopes, (scope) => scope.references),
-    (reference) =>
-      reference.identifier.start === identifier.start &&
-      reference.identifier.end === identifier.end,
-  ).pipe(Option.flatMap((reference) => Option.fromNullishOr(reference.resolved)))
+): Variable | undefined {
+  const reference = scopes
+    .flatMap((scope) => scope.references)
+    .find(
+      (candidate) =>
+        candidate.identifier.start === identifier.start &&
+        candidate.identifier.end === identifier.end,
+    )
+
+  return reference?.resolved ?? undefined
 }
 
-export function variableDeclarator(variable: Variable): Option.Option<ESTree.VariableDeclarator> {
-  return Arr.findFirst(variable.defs, (definition) =>
-    definition.type === 'Variable' && definition.node.type === 'VariableDeclarator'
-      ? Option.some(definition.node)
-      : Option.none(),
-  )
+export function variableDeclarator(variable: Variable): ESTree.VariableDeclarator | undefined {
+  for (const definition of variable.defs) {
+    if (definition.type === 'Variable' && definition.node.type === 'VariableDeclarator') {
+      return definition.node
+    }
+  }
+
+  return undefined
 }
 
 export function isConstDeclarator(declarator: ESTree.VariableDeclarator): boolean {
@@ -54,16 +67,19 @@ export function isConstDeclarator(declarator: ESTree.VariableDeclarator): boolea
 }
 
 export function isReassigned(variable: Variable): boolean {
-  return Arr.some(variable.references, (reference) => reference.isWrite() && !reference.init)
+  return variable.references.some((reference) => reference.isWrite() && !reference.init)
 }
 
 export function annotatedBinding(
   variable: Variable,
-): Option.Option<{ readonly identifier: ESTree.Node; readonly annotation: ESTree.TSType }> {
-  return Arr.findFirst(variable.identifiers, (identifier) =>
-    Option.map(Option.fromNullishOr(identifier.typeAnnotation), (annotation) => ({
-      identifier,
-      annotation: annotation.typeAnnotation,
-    })),
-  )
+): { readonly identifier: ESTree.Node; readonly annotation: ESTree.TSType } | undefined {
+  for (const identifier of variable.identifiers) {
+    const annotation = identifier.typeAnnotation
+
+    if (annotation !== null && annotation !== undefined) {
+      return { identifier, annotation: annotation.typeAnnotation }
+    }
+  }
+
+  return undefined
 }
