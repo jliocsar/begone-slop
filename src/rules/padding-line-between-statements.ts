@@ -132,8 +132,17 @@ function isSingleLineDeclaration(node: ESTree.Node, kind: 'const' | 'let'): bool
   return isKind && node.loc.start.line === node.loc.end.line
 }
 
+function exportedDeclaration(node: ESTree.Node): ESTree.Node {
+  const isExport =
+    node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration'
+
+  return isExport ? (node.declaration ?? node) : node
+}
+
 function matchesAny(node: ESTree.Node, statementTypes: readonly StatementType[]): boolean {
-  return statementTypes.some((statementType) => STATEMENT_MATCHERS[statementType](node))
+  const declaration = exportedDeclaration(node)
+
+  return statementTypes.some((statementType) => STATEMENT_MATCHERS[statementType](declaration))
 }
 
 function requiresBlankLine(

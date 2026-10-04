@@ -17,3 +17,16 @@ function compute(value: number): number {
 class Holder {}
 
 const afterClass = compute(1)
+
+export const firstExport = 1
+export const secondExport = 2
+
+export const handler = () => {
+  compute(2)
+}
+
+export function run(): void {}
+
+export class Runner {}
+
+export default function main(): void {}
