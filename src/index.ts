@@ -1,4 +1,4 @@
-import { Plugin } from 'effect-oxlint'
+import { definePlugin } from '@oxlint/plugins'
 import expectPadding from './rules/expect-padding.ts'
 import noBannedTypeAssertions from './rules/no-banned-type-assertions.ts'
 import noCascadingLayerProvide from './rules/no-cascading-layer-provide.ts'
@@ -38,8 +38,8 @@ import preferOptionFromNullable from './rules/prefer-option-from-nullable.ts'
 import requireSafetyCommentForTypeAssertion from './rules/require-safety-comment-for-type-assertion.ts'
 import statementOrder from './rules/statement-order.ts'
 
-export default Plugin.define({
-  name: 'begone-slop',
+export default definePlugin({
+  meta: { name: 'begone-slop' },
   rules: {
     'statement-order': statementOrder,
     'expect-padding': expectPadding,

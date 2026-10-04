@@ -1,7 +1,4 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
-import type { ESTree, OxlintSourceCode } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 
 export type FunctionSignatureNode =
   | ESTree.ArrowFunctionExpression
@@ -11,10 +8,6 @@ export type FunctionSignatureNode =
   | ESTree.TSConstructorType
   | ESTree.TSFunctionType
   | ESTree.TSMethodSignature
-
-type TypeParameterOwner = {
-  readonly typeParameters?: ESTree.TSTypeParameterDeclaration | null | undefined
-}
 
 export type FunctionSignatureVisitor<Handler> = {
   readonly ArrowFunctionExpression: Handler
@@ -48,24 +41,20 @@ export function isFunctionSignature(node: ESTree.Node): node is FunctionSignatur
 
 export function parameterAnnotation(
   parameter: ESTree.ParamPattern,
-): Option.Option<ESTree.TSTypeAnnotation> {
+): ESTree.TSTypeAnnotation | undefined {
   if (parameter.type === 'TSParameterProperty') {
     return parameterAnnotation(parameter.parameter)
   }
 
   if (parameter.type === 'RestElement') {
-    return Option.orElse(Option.fromNullishOr(parameter.typeAnnotation), () =>
-      parameterAnnotation(parameter.argument),
-    )
+    return parameter.typeAnnotation ?? parameterAnnotation(parameter.argument)
   }
 
   if (parameter.type === 'AssignmentPattern') {
-    return Option.orElse(Option.fromNullishOr(parameter.typeAnnotation), () =>
-      Option.fromNullishOr(parameter.left.typeAnnotation),
-    )
+    return parameter.typeAnnotation ?? parameter.left.typeAnnotation ?? undefined
   }
 
-  return Option.fromNullishOr(parameter.typeAnnotation)
+  return parameter.typeAnnotation ?? undefined
 }
 
 export function parameterName(parameter: ESTree.ParamPattern, parameterText: string): string {
@@ -86,28 +75,36 @@ export function parameterName(parameter: ESTree.ParamPattern, parameterText: str
     : parameterText.replace(UNKNOWN_ANNOTATION_SUFFIX, '')
 }
 
-// oxlint-disable-next-line begone-slop/no-object-parameters -- oxlint's own node union, which ESTree's is not assignable to
-function ownsTypeParameters(node: object): node is TypeParameterOwner {
-  return Predicate.hasProperty(node, 'typeParameters')
+function ownTypeParameters(node: ESTree.Node): ESTree.TSTypeParameterDeclaration | undefined {
+  if (
+    isFunctionSignature(node) ||
+    node.type === 'ClassDeclaration' ||
+    node.type === 'ClassExpression' ||
+    node.type === 'TSInterfaceDeclaration' ||
+    node.type === 'TSTypeAliasDeclaration'
+  ) {
+    return node.typeParameters ?? undefined
+  }
+
+  return undefined
 }
 
-// oxlint-disable-next-line begone-slop/no-object-parameters -- oxlint's own node union, which ESTree's is not assignable to
-function ownTypeParameterNames(node: object): readonly string[] {
-  if (!ownsTypeParameters(node)) {
+function ownTypeParameterNames(node: ESTree.Node): readonly string[] {
+  return ownTypeParameters(node)?.params.map((parameter) => parameter.name.name) ?? []
+}
+
+function ancestorTypeParameterNames(node: ESTree.Node): readonly string[] {
+  const { parent } = node
+
+  if (parent === null) {
     return []
   }
 
-  return Arr.map(node.typeParameters?.params ?? [], (parameter) => parameter.name.name)
+  return [...ownTypeParameterNames(parent), ...ancestorTypeParameterNames(parent)]
 }
 
-export function lexicalTypeParameterNames(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
-): ReadonlySet<string> {
-  return new Set([
-    ...ownTypeParameterNames(node),
-    ...Arr.flatMap(sourceCode.getAncestors(node), ownTypeParameterNames),
-  ])
+export function lexicalTypeParameterNames(node: ESTree.Node): ReadonlySet<string> {
+  return new Set([...ownTypeParameterNames(node), ...ancestorTypeParameterNames(node)])
 }
 
 export function onFunctionSignatures<Handler>(handler: Handler): FunctionSignatureVisitor<Handler> {

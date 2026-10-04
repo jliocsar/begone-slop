@@ -1,26 +1,23 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import { defineRule } from '@oxlint/plugins'
 
 const TYPEOF_OPERATOR = 'typeof'
 
 const MESSAGE =
   'A `typeof` check narrows a representation without establishing its contract. Parse input at its I/O boundary, then branch on the domain value.'
 
-export default Rule.define({
-  name: 'no-runtime-typeof',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid runtime typeof checks on values that were never parsed',
+    docs: { description: 'forbid runtime typeof checks on values that were never parsed' },
     messages: { runtimeTypeof: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      UnaryExpression: (node: ESTree.Node) =>
-        node.type === 'UnaryExpression' && node.operator === TYPEOF_OPERATOR
-          ? context.report(Diagnostic.fromId({ node, messageId: 'runtimeTypeof' }))
-          : Effect.void,
+      UnaryExpression(node) {
+        if (node.operator === TYPEOF_OPERATOR) {
+          context.report({ node, messageId: 'runtimeTypeof' })
+        }
+      },
     }
   },
 })

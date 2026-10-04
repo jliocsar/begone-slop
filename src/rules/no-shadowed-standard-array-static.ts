@@ -1,6 +1,5 @@
-import * as Effect from 'effect/Effect'
-import * as Ref from 'effect/Ref'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import { EFFECT_ARRAY_BINDING, importsEffectArrayUnaliased } from '../shared/effect-array-import.ts'
 
 const STANDARD_ARRAY_STATICS = new Set(['from', 'isArray', 'of'])
@@ -8,11 +7,7 @@ const STANDARD_ARRAY_STATICS = new Set(['from', 'isArray', 'of'])
 const MESSAGE =
   'Array here refers to the Effect module, so a standard static resolves to something else entirely. Reach for globalThis.Array when you want the built-in.'
 
-function readsStandardStatic(node: ESTree.Node): boolean {
-  if (node.type !== 'MemberExpression') {
-    return false
-  }
-
+function readsStandardStatic(node: ESTree.MemberExpression): boolean {
   const { object, property } = node
 
   return (
@@ -23,25 +18,24 @@ function readsStandardStatic(node: ESTree.Node): boolean {
   )
 }
 
-export default Rule.define({
-  name: 'no-shadowed-standard-array-static',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid standard Array statics when Array is imported from effect',
+    docs: { description: 'forbid standard Array statics when Array is imported from effect' },
     messages: { shadowedStandardArrayStatic: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-    const shadowsTheGlobal = yield* Ref.make(false)
+  },
+  create(context) {
+    let shadowsTheGlobal = false
 
     return {
-      Program: (node: ESTree.Node) => Ref.set(shadowsTheGlobal, importsEffectArrayUnaliased(node)),
-      MemberExpression: (node: ESTree.Node) =>
-        Effect.flatMap(Ref.get(shadowsTheGlobal), (shadowed) =>
-          shadowed && readsStandardStatic(node)
-            ? context.report(Diagnostic.fromId({ node, messageId: 'shadowedStandardArrayStatic' }))
-            : Effect.void,
-        ),
+      Program(node) {
+        shadowsTheGlobal = importsEffectArrayUnaliased(node)
+      },
+      MemberExpression(node) {
+        if (shadowsTheGlobal && readsStandardStatic(node)) {
+          context.report({ node, messageId: 'shadowedStandardArrayStatic' })
+        }
+      },
     }
   },
 })

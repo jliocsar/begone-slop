@@ -1,8 +1,7 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import * as Predicate from 'effect/Predicate'
-import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import { isEffectLayerReference } from '../shared/layer-import.ts'
+import { stringLiteralValue } from '../shared/literal.ts'
 
 const PIPE = 'pipe'
 
@@ -18,14 +17,12 @@ function namesAProvisioningMethod(property: ESTree.Node): boolean {
     return PROVISIONING_METHODS.has(property.name)
   }
 
-  return (
-    property.type === 'Literal' &&
-    Predicate.isString(property.value) &&
-    PROVISIONING_METHODS.has(property.value)
-  )
+  const literalName = stringLiteralValue(property)
+
+  return literalName !== undefined && PROVISIONING_METHODS.has(literalName)
 }
 
-function isLayerProvision(sourceCode: OxlintSourceCode, argument: ESTree.Node): boolean {
+function isLayerProvision(sourceCode: SourceCode, argument: ESTree.Node): boolean {
   if (argument.type !== 'CallExpression' || argument.callee.type !== 'MemberExpression') {
     return false
   }
@@ -47,29 +44,26 @@ function isPipeCall(node: ESTree.CallExpression): boolean {
   )
 }
 
-export default Rule.define({
-  name: 'no-cascading-layer-provide',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid multiple Layer.provide stages in one pipe',
+    docs: { description: 'forbid multiple Layer.provide stages in one pipe' },
     messages: { cascadingLayerProvide: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      CallExpression: (node: ESTree.Node) => {
-        if (node.type !== 'CallExpression' || !isPipeCall(node)) {
-          return Effect.void
+      CallExpression(node) {
+        if (!isPipeCall(node)) {
+          return
         }
 
-        const stages = Arr.filter(node.arguments, (argument) =>
+        const stages = node.arguments.filter((argument) =>
           isLayerProvision(context.sourceCode, argument),
         )
 
-        return stages.length < CASCADING_STAGE_COUNT
-          ? Effect.void
-          : context.report(Diagnostic.fromId({ node, messageId: 'cascadingLayerProvide' }))
+        if (stages.length >= CASCADING_STAGE_COUNT) {
+          context.report({ node, messageId: 'cascadingLayerProvide' })
+        }
       },
     }
   },

@@ -174,16 +174,28 @@ Two things to know before extending it:
 
 - **It sets `noEmit`.** The assumption is that a bundler emits and the compiler only checks — which
   is also what makes `allowImportingTsExtensions` legal. Override both if you emit with `tsc`.
-- **It configures the Effect language service with `diagnostics: false`.** Effect diagnostics come
-  from the `effecttsgo` oxlint rules instead, and leaving both on reports every one of them twice.
-  The block inherits through `extends`, and a child config can turn it back on (measured).
+- **It does not configure the Effect language service.** In an Effect project, add it yourself:
+
+  ```jsonc
+  {
+    "extends": "@jliocsar/begone-slop/tsconfig",
+    "compilerOptions": {
+      "plugins": [{ "name": "@effect/language-service", "diagnostics": false }],
+    },
+  }
+  ```
+
+  Keep `diagnostics: false` if you lint with the `effecttsgo` oxlint rules. Leaving both on reports
+  every diagnostic twice.
 
 ## Requirements
 
 - **oxlint** `>=1.77.0`, as a peer of your project.
 - **Node** — any current LTS runs the plugin, which ships as compiled ESM. A TypeScript config
   needs 22.18 or newer, or Bun.
-- `effect` ships as a dependency, so there is nothing else to install.
+- Nothing else. The only dependency is `@oxlint/plugins`, which is types plus a few identity
+  functions. The Effect rules match Effect's API by name and import path, so linting Effect code
+  doesn't pull Effect in.
 
 ## Caveat
 
@@ -191,6 +203,14 @@ oxlint's JS plugin support is alpha and explicitly not semver-bound. An oxlint u
 plugin behaviour without a major version bump. Every rule here is covered by a test that asserts
 both the exact lines it reports on a deliberately-bad fixture _and_ that it reports nothing on a
 clean one, so a break shows up as a failing test rather than a silent no-op.
+
+## Possible improvements
+
+- **`createOnce` instead of `create`.** Every rule uses `create`, which oxlint calls once per file,
+  so per-file state is just local variables in a fresh closure. oxlint's `createOnce` builds each
+  visitor once per run and resets state in a `before()` hook instead, saving a few allocations per
+  file. Not worth it yet: the saving is noise next to oxlint handing each file's AST to JS, and a
+  missed reset leaks state between files, which the single-file fixture tests can't catch.
 
 ## Prior art
 

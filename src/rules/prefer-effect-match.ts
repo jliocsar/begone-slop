@@ -1,6 +1,5 @@
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import { Diagnostic, type ESTree, Rule, RuleContext, SourceCode } from 'effect-oxlint'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const EQUALITY_OPERATORS = new Set(['==', '===', '!=', '!=='])
 
@@ -15,16 +14,16 @@ function isLiteralSide(node: ESTree.Node): boolean {
   )
 }
 
-function comparedSide(test: ESTree.Node): Option.Option<ESTree.Node> {
+function comparedSide(test: ESTree.Node): ESTree.Node | undefined {
   if (test.type !== 'BinaryExpression' || !EQUALITY_OPERATORS.has(test.operator)) {
-    return Option.none()
+    return undefined
   }
 
   if (isLiteralSide(test.left)) {
-    return Option.some(test.right)
+    return test.right
   }
 
-  return isLiteralSide(test.right) ? Option.some(test.left) : Option.none()
+  return isLiteralSide(test.right) ? test.left : undefined
 }
 
 function chainTests(node: ESTree.ConditionalExpression): readonly ESTree.Node[] {
@@ -35,49 +34,44 @@ function chainTests(node: ESTree.ConditionalExpression): readonly ESTree.Node[] 
     : [node.test]
 }
 
-function comparedText(test: ESTree.Node): Effect.Effect<Option.Option<string>, never, RuleContext> {
-  return Option.match(comparedSide(test), {
-    onNone: () => Effect.succeed(Option.none<string>()),
-    onSome: (compared) => SourceCode.getNodeText(compared).pipe(Effect.map(Option.some)),
-  })
+function comparesOneSubject(sourceCode: SourceCode, tests: readonly ESTree.Node[]): boolean {
+  const subjects: string[] = []
+
+  for (const test of tests) {
+    const compared = comparedSide(test)
+
+    if (compared === undefined) {
+      return false
+    }
+
+    subjects.push(sourceCode.getText(compared))
+  }
+
+  return subjects.every((subject) => subject === subjects[0])
 }
 
-function comparesOneSubject(subjects: readonly Option.Option<string>[]): boolean {
-  return Option.match(Option.all(subjects), {
-    onNone: () => false,
-    onSome: (texts) => texts.every((text) => text === texts[0]),
-  })
-}
-
-export default Rule.define({
-  name: 'prefer-effect-match',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid chained literal ternaries over one subject in favour of Match',
+    docs: { description: 'forbid chained literal ternaries over one subject in favour of Match' },
     messages: { preferEffectMatch: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      ConditionalExpression: (node: ESTree.Node) => {
-        if (node.type !== 'ConditionalExpression' || node.parent.type === 'ConditionalExpression') {
-          return Effect.void
+      ConditionalExpression(node) {
+        if (node.parent.type === 'ConditionalExpression') {
+          return
         }
 
         const tests = chainTests(node)
 
         if (tests.length < MINIMUM_LITERAL_CHECKS) {
-          return Effect.void
+          return
         }
 
-        return Effect.forEach(tests, comparedText).pipe(
-          Effect.flatMap((subjects) =>
-            comparesOneSubject(subjects)
-              ? context.report(Diagnostic.fromId({ node, messageId: 'preferEffectMatch' }))
-              : Effect.void,
-          ),
-        )
+        if (comparesOneSubject(context.sourceCode, tests)) {
+          context.report({ node, messageId: 'preferEffectMatch' })
+        }
       },
     }
   },

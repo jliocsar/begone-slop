@@ -1,5 +1,5 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const OPTION_MODULE = 'Option'
 
@@ -40,11 +40,7 @@ function callsOptionMethod(node: ESTree.Expression, method: string): boolean {
   )
 }
 
-function isNullableOptionTernary(node: ESTree.Node): boolean {
-  if (node.type !== 'ConditionalExpression') {
-    return false
-  }
-
+function isNullableOptionTernary(node: ESTree.ConditionalExpression): boolean {
   return (
     testsAgainstNull(node.test) &&
     callsOptionMethod(node.consequent, 'some') &&
@@ -52,21 +48,21 @@ function isNullableOptionTernary(node: ESTree.Node): boolean {
   )
 }
 
-export default Rule.define({
-  name: 'prefer-option-from-nullable',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'require Option.fromNullable over a nullable Option.some/Option.none ternary',
+    docs: {
+      description: 'require Option.fromNullable over a nullable Option.some/Option.none ternary',
+    },
     messages: { preferOptionFromNullable: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      ConditionalExpression: (node: ESTree.Node) =>
-        isNullableOptionTernary(node)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'preferOptionFromNullable' }))
-          : Effect.void,
+      ConditionalExpression(node) {
+        if (isNullableOptionTernary(node)) {
+          context.report({ node, messageId: 'preferOptionFromNullable' })
+        }
+      },
     }
   },
 })

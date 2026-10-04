@@ -1,5 +1,5 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const TAG = '_tag'
 
@@ -20,33 +20,24 @@ function definesTheTag(node: ESTree.MemberExpression): boolean {
   return parent.type === 'AssignmentExpression' && parent.left === node && parent.operator === '='
 }
 
-function readsTheTag(node: ESTree.Node): boolean {
-  if (node.type === 'MemberExpression') {
-    return namesTheTag(node.computed, node.property) && !definesTheTag(node)
-  }
-
-  if (node.type === 'Property') {
-    return node.parent.type === 'ObjectPattern' && namesTheTag(node.computed, node.key)
-  }
-
-  return false
-}
-
-export default Rule.define({
-  name: 'no-tag-access',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid reading the private `_tag` discriminant directly',
+    docs: { description: 'forbid reading the private `_tag` discriminant directly' },
     messages: { noTagAccess: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
-    const report = (node: ESTree.Node) =>
-      readsTheTag(node)
-        ? context.report(Diagnostic.fromId({ node, messageId: 'noTagAccess' }))
-        : Effect.void
-
-    return { MemberExpression: report, Property: report }
+  },
+  create(context) {
+    return {
+      MemberExpression(node) {
+        if (namesTheTag(node.computed, node.property) && !definesTheTag(node)) {
+          context.report({ node, messageId: 'noTagAccess' })
+        }
+      },
+      Property(node) {
+        if (node.parent.type === 'ObjectPattern' && namesTheTag(node.computed, node.key)) {
+          context.report({ node, messageId: 'noTagAccess' })
+        }
+      },
+    }
   },
 })

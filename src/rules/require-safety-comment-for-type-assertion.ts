@@ -1,6 +1,6 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, type OxlintSourceCode, Rule, RuleContext } from 'effect-oxlint'
-import { isConstAssertion, isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
+import { isConstAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 
 const COMMENT_OWNER_KINDS = new Set([
   'ExpressionStatement',
@@ -16,7 +16,7 @@ const MESSAGE =
   'This type assertion has no `SAFETY:` justification. State the checked invariant immediately before the assertion or its containing statement.'
 
 function hasSafetyComment(
-  sourceCode: OxlintSourceCode,
+  sourceCode: SourceCode,
   node: TypeAssertion,
   current: ESTree.Node,
 ): boolean {
@@ -37,24 +37,19 @@ function hasSafetyComment(
   return hasSafetyComment(sourceCode, node, parent)
 }
 
-export default Rule.define({
-  name: 'require-safety-comment-for-type-assertion',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'require a SAFETY comment on every type assertion except a const assertion',
+    docs: {
+      description: 'require a SAFETY comment on every type assertion except a const assertion',
+    },
     messages: { missingSafetyComment: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
-    const report = (node: ESTree.Node) => {
-      if (!isTypeAssertion(node) || isConstAssertion(node)) {
-        return Effect.void
+  },
+  create(context) {
+    const report = (node: TypeAssertion) => {
+      if (!isConstAssertion(node) && !hasSafetyComment(context.sourceCode, node, node)) {
+        context.report({ node, messageId: 'missingSafetyComment' })
       }
-
-      return hasSafetyComment(context.sourceCode, node, node)
-        ? Effect.void
-        : context.report(Diagnostic.fromId({ node, messageId: 'missingSafetyComment' }))
     }
 
     return { TSAsExpression: report, TSTypeAssertion: report }

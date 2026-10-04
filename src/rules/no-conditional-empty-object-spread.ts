@@ -1,5 +1,5 @@
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const MESSAGE =
   'This conditional spread hides property omission behind an empty object. Build the object in separate statements and add the property only when present.'
@@ -15,25 +15,18 @@ function omitsThroughEmptyBranch(conditional: ESTree.Expression): boolean {
   )
 }
 
-export default Rule.define({
-  name: 'no-conditional-empty-object-spread',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'suggestion',
-    description: 'forbid object spreads that omit a field by spreading an empty object',
+    docs: { description: 'forbid object spreads that omit a field by spreading an empty object' },
     messages: { noConditionalEmptyObjectSpread: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      SpreadElement: (node: ESTree.Node) => {
-        if (node.type !== 'SpreadElement' || node.parent.type !== 'ObjectExpression') {
-          return Effect.void
+      SpreadElement(node) {
+        if (node.parent.type === 'ObjectExpression' && omitsThroughEmptyBranch(node.argument)) {
+          context.report({ node, messageId: 'noConditionalEmptyObjectSpread' })
         }
-
-        return omitsThroughEmptyBranch(node.argument)
-          ? context.report(Diagnostic.fromId({ node, messageId: 'noConditionalEmptyObjectSpread' }))
-          : Effect.void
       },
     }
   },

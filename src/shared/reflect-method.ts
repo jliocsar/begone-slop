@@ -1,10 +1,9 @@
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
-import { type ESTree, type OxlintSourceCode, Scope } from 'effect-oxlint'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
+import { findVariable } from './binding-scope.ts'
 
 const REFLECT = 'Reflect'
 
-function namesTheGlobalReflect(sourceCode: OxlintSourceCode, object: ESTree.Node): boolean {
+function namesTheGlobalReflect(sourceCode: SourceCode, object: ESTree.Node): boolean {
   if (object.type !== 'Identifier' || object.name !== REFLECT) {
     return false
   }
@@ -13,26 +12,17 @@ function namesTheGlobalReflect(sourceCode: OxlintSourceCode, object: ESTree.Node
     return true
   }
 
-  return Option.match(Scope.findVariableUp(sourceCode.getScope(object), REFLECT), {
-    onNone: () => true,
-    onSome: (variable) => variable.defs.length === 0,
-  })
+  const variable = findVariable(sourceCode.getScope(object), REFLECT)
+
+  return variable === undefined || variable.defs.length === 0
 }
 
 export function isGlobalReflectMethodCall(
-  sourceCode: OxlintSourceCode,
-  callee: ESTree.Expression,
+  sourceCode: SourceCode,
+  callee: ESTree.Node,
   methodName: string,
 ): boolean {
-  if (
-    !Predicate.hasProperty(callee, 'property') ||
-    !Predicate.hasProperty(callee, 'object') ||
-    !Predicate.hasProperty(callee, 'computed')
-  ) {
-    return false
-  }
-
-  if (!namesTheGlobalReflect(sourceCode, callee.object)) {
+  if (callee.type !== 'MemberExpression' || !namesTheGlobalReflect(sourceCode, callee.object)) {
     return false
   }
 

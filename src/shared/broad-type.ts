@@ -1,6 +1,4 @@
-import * as Arr from 'effect/Array'
-import * as Option from 'effect/Option'
-import type { ESTree } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 import { typeReferenceName } from './type-environment.ts'
 
 export type BroadTypeKind = 'top' | 'object' | 'record'
@@ -22,8 +20,8 @@ const PROPERTY_KEY_TYPE_NAME = 'PropertyKey'
 
 const WHITESPACE = /\s+/gu
 
-function typeArgument(type: ESTree.TSTypeReference, index: number): Option.Option<ESTree.TSType> {
-  return Arr.get(type.typeArguments?.params ?? [], index)
+function typeArgument(type: ESTree.TSTypeReference, index: number): ESTree.TSType | undefined {
+  return type.typeArguments?.params[index]
 }
 
 function isBroadRecordKeyType(type: ESTree.TSType): boolean {
@@ -36,42 +34,55 @@ function isBroadRecordKeyType(type: ESTree.TSType): boolean {
   }
 
   if (type.type === 'TSUnionType') {
-    return Arr.every(type.types, isBroadRecordKeyType)
+    return type.types.every(isBroadRecordKeyType)
   }
 
-  return (
-    type.type === 'TSTypeReference' &&
-    Option.exists(typeReferenceName(type), (name) => name === PROPERTY_KEY_TYPE_NAME)
-  )
+  return type.type === 'TSTypeReference' && typeReferenceName(type) === PROPERTY_KEY_TYPE_NAME
 }
 
 function isBroadRecordArguments(type: ESTree.TSTypeReference): boolean {
+  const key = typeArgument(type, 0)
+  const value = typeArgument(type, 1)
+
   return (
     (type.typeArguments?.params.length ?? 0) === 2 &&
-    Option.exists(typeArgument(type, 0), isBroadRecordKeyType) &&
-    Option.exists(typeArgument(type, 1), isUnknownOrAnyType)
+    key !== undefined &&
+    isBroadRecordKeyType(key) &&
+    value !== undefined &&
+    isUnknownOrAnyType(value)
   )
 }
 
 function isBroadRecordReference(type: ESTree.TSTypeReference): boolean {
-  return Option.exists(typeReferenceName(type), (name) =>
-    name === READONLY_TYPE_NAME
-      ? Option.exists(typeArgument(type, 0), isBroadRecordType)
-      : name === RECORD_TYPE_NAME && isBroadRecordArguments(type),
-  )
+  const name = typeReferenceName(type)
+
+  if (name === READONLY_TYPE_NAME) {
+    const wrapped = typeArgument(type, 0)
+
+    return wrapped !== undefined && isBroadRecordType(wrapped)
+  }
+
+  return name === RECORD_TYPE_NAME && isBroadRecordArguments(type)
 }
 
 function isBroadIndexSignature(type: ESTree.TSTypeLiteral): boolean {
-  return Option.exists(
-    Arr.head(type.members),
-    (member) =>
-      type.members.length === 1 &&
-      member.type === 'TSIndexSignature' &&
-      member.parameters.length === 1 &&
-      Option.exists(Arr.head(member.parameters), (parameter) =>
-        isBroadRecordKeyType(parameter.typeAnnotation.typeAnnotation),
-      ) &&
-      isUnknownOrAnyType(member.typeAnnotation.typeAnnotation),
+  const [member] = type.members
+
+  if (
+    member === undefined ||
+    type.members.length !== 1 ||
+    member.type !== 'TSIndexSignature' ||
+    member.parameters.length !== 1
+  ) {
+    return false
+  }
+
+  const [parameter] = member.parameters
+
+  return (
+    parameter !== undefined &&
+    isBroadRecordKeyType(parameter.typeAnnotation.typeAnnotation) &&
+    isUnknownOrAnyType(member.typeAnnotation.typeAnnotation)
   )
 }
 
@@ -87,16 +98,16 @@ function isUnknownOrAnyType(type: ESTree.TSType): boolean {
   return type.type === 'TSUnknownKeyword' || type.type === 'TSAnyKeyword'
 }
 
-export function broadTypeKind(type: ESTree.TSType): Option.Option<BroadTypeKind> {
+export function broadTypeKind(type: ESTree.TSType): BroadTypeKind | undefined {
   if (type.type === 'TSUnknownKeyword' || type.type === 'TSAnyKeyword') {
-    return Option.some('top')
+    return 'top'
   }
 
   if (type.type === 'TSObjectKeyword') {
-    return Option.some('object')
+    return 'object'
   }
 
-  return isBroadRecordType(type) ? Option.some('record') : Option.none()
+  return isBroadRecordType(type) ? 'record' : undefined
 }
 
 function normalizedTypeText(sourceText: string, type: ESTree.TSType): string {
@@ -121,7 +132,7 @@ export function isDefinitelyObjectType(type: ESTree.TSType): boolean {
   }
 
   if (type.type === 'TSIntersectionType') {
-    return Arr.every(type.types, isDefinitelyObjectType)
+    return type.types.every(isDefinitelyObjectType)
   }
 
   return (
@@ -133,18 +144,27 @@ export function isDefinitelyObjectType(type: ESTree.TSType): boolean {
 
 export function isDefinitelyNarrowerRecordType(type: ESTree.TSType): boolean {
   if (type.type === 'TSTypeLiteral') {
-    return Arr.some(type.members, (member) => member.type !== 'TSIndexSignature')
+    return type.members.some((member) => member.type !== 'TSIndexSignature')
   }
 
   if (type.type !== 'TSTypeReference') {
     return false
   }
 
-  return Option.exists(typeReferenceName(type), (name) =>
-    name === READONLY_TYPE_NAME
-      ? Option.exists(typeArgument(type, 0), isDefinitelyNarrowerRecordType)
-      : name === RECORD_TYPE_NAME &&
-        (type.typeArguments?.params.length ?? 0) === 2 &&
-        Option.exists(typeArgument(type, 1), (value) => !isUnknownOrAnyType(value)),
+  const name = typeReferenceName(type)
+
+  if (name === READONLY_TYPE_NAME) {
+    const wrapped = typeArgument(type, 0)
+
+    return wrapped !== undefined && isDefinitelyNarrowerRecordType(wrapped)
+  }
+
+  const value = typeArgument(type, 1)
+
+  return (
+    name === RECORD_TYPE_NAME &&
+    (type.typeArguments?.params.length ?? 0) === 2 &&
+    value !== undefined &&
+    !isUnknownOrAnyType(value)
   )
 }

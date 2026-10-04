@@ -1,14 +1,5 @@
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import * as Ref from 'effect/Ref'
-import {
-  Diagnostic,
-  type ESTree,
-  type OxlintSourceCode,
-  Rule,
-  RuleContext,
-  type Variable,
-} from 'effect-oxlint'
+import type { ESTree, SourceCode, Variable } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import { resolvedVariableForIdentifier, variableDeclarator } from '../shared/binding-scope.ts'
 import {
   enclosingFunction,
@@ -17,7 +8,7 @@ import {
   sourceKeyName,
 } from '../shared/enclosing-function.ts'
 import { hasKnownEvidence, isEmptyObjectExpression } from '../shared/known-evidence.ts'
-import { isTypeAssertion } from '../shared/type-assertion.ts'
+import { isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 import {
   createTypeEnvironment,
   EMPTY_TYPE_ENVIRONMENT,
@@ -25,11 +16,11 @@ import {
 } from '../shared/type-environment.ts'
 import { classifyWideningTarget, type WideningTarget } from '../shared/widening-targets.ts'
 
-type Diagnose = (
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
-  environment: TypeEnvironment,
-) => Option.Option<Diagnostic.Diagnostic>
+type Widening = {
+  readonly expression: ESTree.Expression
+  readonly subject: string
+  readonly target: WideningTarget
+}
 
 const MESSAGE =
   'The explicit {{target}} type on {{subject}} discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.'
@@ -41,179 +32,166 @@ const ACCUMULATOR_TARGET_KINDS = new Set(['generic container', 'open dictionary'
 function annotationTarget(
   annotation: ESTree.TSTypeAnnotation | null | undefined,
   environment: TypeEnvironment,
-): Option.Option<WideningTarget> {
-  return Option.flatMap(Option.fromNullishOr(annotation), (annotated) =>
-    classifyWideningTarget(annotated.typeAnnotation, environment),
-  )
+): WideningTarget | undefined {
+  if (annotation === null || annotation === undefined) {
+    return undefined
+  }
+
+  return classifyWideningTarget(annotation.typeAnnotation, environment)
 }
 
 function returnTypeTarget(
-  owner: Option.Option<FunctionOwner>,
+  owner: FunctionOwner | undefined,
   environment: TypeEnvironment,
-): Option.Option<WideningTarget> {
-  return Option.flatMap(owner, (fn) => annotationTarget(fn.returnType, environment))
+): WideningTarget | undefined {
+  return owner === undefined ? undefined : annotationTarget(owner.returnType, environment)
 }
 
-function wideningDiagnostic(
-  sourceCode: OxlintSourceCode,
+function wideningOf(
+  sourceCode: SourceCode,
   expression: ESTree.Expression,
-  target: Option.Option<WideningTarget>,
+  target: WideningTarget | undefined,
   subject: string,
-): Option.Option<Diagnostic.Diagnostic> {
-  return target.pipe(
-    Option.filter(
-      (destination) =>
-        !(ACCUMULATOR_TARGET_KINDS.has(destination.kind) && isEmptyObjectExpression(expression)),
-    ),
-    Option.filter(() =>
-      hasKnownEvidence(sourceCode.scopeManager.scopes, expression, new Set<Variable>()),
-    ),
-    Option.map((destination) =>
-      Diagnostic.fromId({
-        node: expression,
-        messageId: 'knownValueWidening',
-        data: { subject, target: destination.kind },
-      }),
-    ),
-  )
-}
-
-function bindingDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
-  environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (node.type !== 'VariableDeclarator' || node.id.type !== 'Identifier') {
-    return Option.none()
+): Widening | undefined {
+  if (
+    target === undefined ||
+    (ACCUMULATOR_TARGET_KINDS.has(target.kind) && isEmptyObjectExpression(expression)) ||
+    !hasKnownEvidence(sourceCode.scopeManager.scopes, expression, new Set<Variable>())
+  ) {
+    return undefined
   }
 
+  return { expression, subject, target }
+}
+
+function bindingWidening(
+  sourceCode: SourceCode,
+  node: ESTree.VariableDeclarator,
+  environment: TypeEnvironment,
+): Widening | undefined {
   const { id, init } = node
 
-  return Option.flatMap(Option.fromNullishOr(init), (value) =>
-    wideningDiagnostic(
-      sourceCode,
-      value,
-      annotationTarget(id.typeAnnotation, environment),
-      `binding \`${id.name}\``,
-    ),
+  if (id.type !== 'Identifier' || init === null) {
+    return undefined
+  }
+
+  return wideningOf(
+    sourceCode,
+    init,
+    annotationTarget(id.typeAnnotation, environment),
+    `binding \`${id.name}\``,
   )
 }
 
-function propertyDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
+function propertyWidening(
+  sourceCode: SourceCode,
+  node: ESTree.PropertyDefinition | ESTree.AccessorProperty,
   environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (node.type !== 'PropertyDefinition' && node.type !== 'AccessorProperty') {
-    return Option.none()
-  }
-
+): Widening | undefined {
   const { key, typeAnnotation, value } = node
 
-  return Option.flatMap(Option.fromNullishOr(value), (initializer) =>
-    wideningDiagnostic(
-      sourceCode,
-      initializer,
-      annotationTarget(typeAnnotation, environment),
-      `property \`${sourceKeyName(sourceCode, key)}\``,
-    ),
-  )
-}
-
-function assignmentDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
-  environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (
-    node.type !== 'AssignmentExpression' ||
-    node.operator !== '=' ||
-    node.left.type !== 'Identifier'
-  ) {
-    return Option.none()
+  if (value === null) {
+    return undefined
   }
 
-  const { left, right } = node
-
-  return annotatedBindingOfReference(sourceCode, left).pipe(
-    Option.flatMap((id) =>
-      wideningDiagnostic(
-        sourceCode,
-        right,
-        annotationTarget(id.typeAnnotation, environment),
-        `binding \`${id.name}\``,
-      ),
-    ),
+  return wideningOf(
+    sourceCode,
+    value,
+    annotationTarget(typeAnnotation, environment),
+    `property \`${sourceKeyName(sourceCode, key)}\``,
   )
 }
 
 function annotatedBindingOfReference(
-  sourceCode: OxlintSourceCode,
+  sourceCode: SourceCode,
   identifier: ESTree.IdentifierReference,
-): Option.Option<ESTree.BindingIdentifier> {
-  return resolvedVariableForIdentifier(sourceCode.scopeManager.scopes, identifier).pipe(
-    Option.filter((variable) => variable.defs.length === 1),
-    Option.flatMap(variableDeclarator),
-    Option.flatMap((declarator) =>
-      declarator.id.type === 'Identifier' ? Option.some(declarator.id) : Option.none(),
-    ),
+): ESTree.BindingIdentifier | undefined {
+  const variable = resolvedVariableForIdentifier(sourceCode.scopeManager.scopes, identifier)
+
+  if (variable === undefined || variable.defs.length !== 1) {
+    return undefined
+  }
+
+  const declarator = variableDeclarator(variable)
+
+  return declarator?.id.type === 'Identifier' ? declarator.id : undefined
+}
+
+function assignmentWidening(
+  sourceCode: SourceCode,
+  node: ESTree.AssignmentExpression,
+  environment: TypeEnvironment,
+): Widening | undefined {
+  const { left, operator, right } = node
+
+  if (operator !== '=' || left.type !== 'Identifier') {
+    return undefined
+  }
+
+  const id = annotatedBindingOfReference(sourceCode, left)
+
+  if (id === undefined) {
+    return undefined
+  }
+
+  return wideningOf(
+    sourceCode,
+    right,
+    annotationTarget(id.typeAnnotation, environment),
+    `binding \`${id.name}\``,
   )
 }
 
-function returnDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
+function returnWidening(
+  sourceCode: SourceCode,
+  node: ESTree.ReturnStatement,
   environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (node.type !== 'ReturnStatement') {
-    return Option.none()
+): Widening | undefined {
+  const { argument } = node
+
+  if (argument === null) {
+    return undefined
   }
 
   const owner = enclosingFunction(node)
 
-  return Option.flatMap(Option.fromNullishOr(node.argument), (argument) =>
-    wideningDiagnostic(
-      sourceCode,
-      argument,
-      returnTypeTarget(owner, environment),
-      `return value of \`${functionName(sourceCode, owner)}\``,
-    ),
+  return wideningOf(
+    sourceCode,
+    argument,
+    returnTypeTarget(owner, environment),
+    `return value of \`${functionName(sourceCode, owner)}\``,
   )
 }
 
-function expressionBodyDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
+function expressionBodyWidening(
+  sourceCode: SourceCode,
+  node: ESTree.ArrowFunctionExpression,
   environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (node.type !== 'ArrowFunctionExpression') {
-    return Option.none()
-  }
-
+): Widening | undefined {
   const { body, returnType } = node
 
   if (body.type === 'BlockStatement') {
-    return Option.none()
+    return undefined
   }
 
-  return wideningDiagnostic(
+  return wideningOf(
     sourceCode,
     body,
     annotationTarget(returnType, environment),
-    `return value of \`${functionName(sourceCode, Option.some(node))}\``,
+    `return value of \`${functionName(sourceCode, node)}\``,
   )
 }
 
-function assertionDiagnostic(
-  sourceCode: OxlintSourceCode,
-  node: ESTree.Node,
+function assertionWidening(
+  sourceCode: SourceCode,
+  node: TypeAssertion,
   environment: TypeEnvironment,
-): Option.Option<Diagnostic.Diagnostic> {
-  if (!isTypeAssertion(node) || isTypeAssertion(node.parent)) {
-    return Option.none()
+): Widening | undefined {
+  if (isTypeAssertion(node.parent)) {
+    return undefined
   }
 
-  return wideningDiagnostic(
+  return wideningOf(
     sourceCode,
     node.expression,
     classifyWideningTarget(node.typeAnnotation, environment),
@@ -221,38 +199,51 @@ function assertionDiagnostic(
   )
 }
 
-export default Rule.define({
-  name: 'no-known-value-widening',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid widening a value of known shape into a broad annotation',
+    docs: { description: 'forbid widening a value of known shape into a broad annotation' },
     messages: { knownValueWidening: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-    const environment = yield* Ref.make(EMPTY_TYPE_ENVIRONMENT)
+  },
+  create(context) {
+    let environment = EMPTY_TYPE_ENVIRONMENT
 
-    const report = (diagnose: Diagnose) => (node: ESTree.Node) =>
-      Ref.get(environment).pipe(
-        Effect.flatMap((known) =>
-          Option.match(diagnose(context.sourceCode, node, known), {
-            onNone: () => Effect.void,
-            onSome: context.report,
-          }),
-        ),
-      )
+    const report = (widening: Widening | undefined) => {
+      if (widening !== undefined) {
+        context.report({
+          node: widening.expression,
+          messageId: 'knownValueWidening',
+          data: { subject: widening.subject, target: widening.target.kind },
+        })
+      }
+    }
 
-    const reportProperty = report(propertyDiagnostic)
-    const reportAssertion = report(assertionDiagnostic)
+    const reportProperty = (node: ESTree.PropertyDefinition | ESTree.AccessorProperty) => {
+      report(propertyWidening(context.sourceCode, node, environment))
+    }
+
+    const reportAssertion = (node: TypeAssertion) => {
+      report(assertionWidening(context.sourceCode, node, environment))
+    }
 
     return {
-      Program: (node: ESTree.Node) => Ref.set(environment, createTypeEnvironment(node)),
-      VariableDeclarator: report(bindingDiagnostic),
+      Program(node) {
+        environment = createTypeEnvironment(node)
+      },
+      VariableDeclarator(node) {
+        report(bindingWidening(context.sourceCode, node, environment))
+      },
       PropertyDefinition: reportProperty,
       AccessorProperty: reportProperty,
-      AssignmentExpression: report(assignmentDiagnostic),
-      ReturnStatement: report(returnDiagnostic),
-      ArrowFunctionExpression: report(expressionBodyDiagnostic),
+      AssignmentExpression(node) {
+        report(assignmentWidening(context.sourceCode, node, environment))
+      },
+      ReturnStatement(node) {
+        report(returnWidening(context.sourceCode, node, environment))
+      },
+      ArrowFunctionExpression(node) {
+        report(expressionBodyWidening(context.sourceCode, node, environment))
+      },
       TSAsExpression: reportAssertion,
       TSTypeAssertion: reportAssertion,
     }

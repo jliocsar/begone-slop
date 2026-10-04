@@ -1,6 +1,5 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 import { isConstAssertion, isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 
 const MESSAGE =
@@ -13,9 +12,7 @@ function isOutermostAssertionInChain(node: TypeAssertion): boolean {
 }
 
 function assertionChain(expression: ESTree.Expression): readonly TypeAssertion[] {
-  return isTypeAssertion(expression)
-    ? Arr.prepend(assertionChain(expression.expression), expression)
-    : []
+  return isTypeAssertion(expression) ? [expression, ...assertionChain(expression.expression)] : []
 }
 
 function isForbiddenAssertionChain(node: TypeAssertion): boolean {
@@ -24,24 +21,17 @@ function isForbiddenAssertionChain(node: TypeAssertion): boolean {
   return chain.length > 1 && chain.some((assertion) => !isConstAssertion(assertion))
 }
 
-export default Rule.define({
-  name: 'no-chained-type-assertions',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid chained type assertions, including parenthesized chains',
+    docs: { description: 'forbid chained type assertions, including parenthesized chains' },
     messages: { chained: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
-    const report = (node: ESTree.Node) => {
-      if (!isTypeAssertion(node) || !isOutermostAssertionInChain(node)) {
-        return Effect.void
+  },
+  create(context) {
+    const report = (node: TypeAssertion) => {
+      if (isOutermostAssertionInChain(node) && isForbiddenAssertionChain(node)) {
+        context.report({ node, messageId: 'chained' })
       }
-
-      return isForbiddenAssertionChain(node)
-        ? context.report(Diagnostic.fromId({ node, messageId: 'chained' }))
-        : Effect.void
     }
 
     return { TSAsExpression: report, TSTypeAssertion: report }

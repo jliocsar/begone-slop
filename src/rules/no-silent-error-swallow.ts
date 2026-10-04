@@ -1,7 +1,5 @@
-import * as Arr from 'effect/Array'
-import * as Effect from 'effect/Effect'
-import * as Option from 'effect/Option'
-import { Diagnostic, type ESTree, Rule, RuleContext } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
+import { defineRule } from '@oxlint/plugins'
 
 const EFFECT = 'Effect'
 
@@ -65,41 +63,36 @@ function silentHandlers(argument: ESTree.Node): readonly ESTree.Node[] {
     return direct
   }
 
-  return Arr.appendAll(
-    direct,
-    Arr.getSomes(
-      Arr.map(argument.properties, (property) =>
-        property.type === 'Property' && returnsOnlyVoid(property.value)
-          ? Option.some(property.value)
-          : Option.none<ESTree.Node>(),
-      ),
-    ),
-  )
-}
+  const nested: ESTree.Node[] = []
 
-function silentSwallows(node: ESTree.Node): readonly Diagnostic.Diagnostic[] {
-  if (node.type !== 'CallExpression' || !isEffectMember(node.callee, CATCH_METHODS)) {
-    return []
+  for (const property of argument.properties) {
+    if (property.type === 'Property' && returnsOnlyVoid(property.value)) {
+      nested.push(property.value)
+    }
   }
 
-  return Arr.map(Arr.flatMap(node.arguments, silentHandlers), () =>
-    Diagnostic.fromId({ node, messageId: 'silentErrorSwallow' }),
-  )
+  return [...direct, ...nested]
 }
 
-export default Rule.define({
-  name: 'no-silent-error-swallow',
-  meta: Rule.meta({
+export default defineRule({
+  meta: {
     type: 'problem',
-    description: 'forbid catch handlers that swallow the error by returning a void effect',
+    docs: {
+      description: 'forbid catch handlers that swallow the error by returning a void effect',
+    },
     messages: { silentErrorSwallow: MESSAGE },
-  }),
-  create: function* () {
-    const context = yield* RuleContext
-
+  },
+  create(context) {
     return {
-      CallExpression: (node: ESTree.Node) =>
-        Effect.forEach(silentSwallows(node), context.report, { discard: true }),
+      CallExpression(node) {
+        if (!isEffectMember(node.callee, CATCH_METHODS)) {
+          return
+        }
+
+        node.arguments.flatMap(silentHandlers).forEach(() => {
+          context.report({ node, messageId: 'silentErrorSwallow' })
+        })
+      },
     }
   },
 })

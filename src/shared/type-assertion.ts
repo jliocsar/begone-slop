@@ -1,4 +1,4 @@
-import type { ESTree } from 'effect-oxlint'
+import type { ESTree } from '@oxlint/plugins'
 
 export type TypeAssertion = ESTree.TSAsExpression | ESTree.TSTypeAssertion
 

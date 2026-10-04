@@ -1,5 +1,4 @@
-import * as Option from 'effect/Option'
-import type { ESTree, OxlintScope, Variable } from 'effect-oxlint'
+import type { ESTree, Scope, Variable } from '@oxlint/plugins'
 import {
   isConstDeclarator,
   isReassigned,
@@ -8,15 +7,18 @@ import {
 } from './binding-scope.ts'
 import { isKnownEvidenceExpression } from './widening-targets.ts'
 
-function singleDeclarator(variable: Variable): Option.Option<ESTree.VariableDeclarator> {
-  return variable.defs.length === 1 ? variableDeclarator(variable) : Option.none()
+function singleDeclarator(variable: Variable): ESTree.VariableDeclarator | undefined {
+  return variable.defs.length === 1 ? variableDeclarator(variable) : undefined
 }
 
-function stableConstInitializer(variable: Variable): Option.Option<ESTree.Expression> {
-  return singleDeclarator(variable).pipe(
-    Option.filter((declarator) => isConstDeclarator(declarator) && !isReassigned(variable)),
-    Option.flatMap((declarator) => Option.fromNullishOr(declarator.init)),
-  )
+function stableConstInitializer(variable: Variable): ESTree.Expression | undefined {
+  const declarator = singleDeclarator(variable)
+
+  if (declarator === undefined || !isConstDeclarator(declarator) || isReassigned(variable)) {
+    return undefined
+  }
+
+  return declarator.init ?? undefined
 }
 
 function unwrapExpression(expression: ESTree.Expression): ESTree.Expression {
@@ -39,7 +41,7 @@ export function isEmptyObjectExpression(expression: ESTree.Expression): boolean 
 }
 
 export function hasKnownEvidence(
-  scopes: readonly OxlintScope[],
+  scopes: readonly Scope[],
   expression: ESTree.Expression,
   visitedVariables: ReadonlySet<Variable>,
 ): boolean {
@@ -53,12 +55,15 @@ export function hasKnownEvidence(
     return false
   }
 
-  return resolvedVariableForIdentifier(scopes, unwrapped).pipe(
-    Option.filter((variable) => !visitedVariables.has(variable)),
-    Option.exists((variable) =>
-      Option.exists(stableConstInitializer(variable), (init) =>
-        hasKnownEvidence(scopes, init, new Set([...visitedVariables, variable])),
-      ),
-    ),
+  const variable = resolvedVariableForIdentifier(scopes, unwrapped)
+
+  if (variable === undefined || visitedVariables.has(variable)) {
+    return false
+  }
+
+  const init = stableConstInitializer(variable)
+
+  return (
+    init !== undefined && hasKnownEvidence(scopes, init, new Set([...visitedVariables, variable]))
   )
 }
