@@ -12,3 +12,10 @@ export const handler = () => {
 export function run() {}
 export class Runner {}
 export default function main() {}
+
+function overloaded(input: string): string
+function overloaded(input: number): number
+function overloaded(input: string | number): string | number {
+  return input
+}
+function unrelated() {}
