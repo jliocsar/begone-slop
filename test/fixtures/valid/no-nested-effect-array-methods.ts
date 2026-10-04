@@ -19,3 +19,8 @@ function localGlobalAlias() {
 }
 
 import { type Array as TypeOnlyArray } from 'effect'
+
+const seedArgument = ArrayOps.scan(values, ArrayOps.empty<string>(), (prefix, value) => [...prefix, value])
+const nonDataArgument = ArrayOps.difference(values, ArrayOps.map(others, (other) => other))
+const insideCallback = ArrayOps.map(values, (value) => ArrayOps.of(value))
+const insideNestedCallback = ArrayOps.filter(values, (value) => ArrayOps.contains(allowed, value))

@@ -3,7 +3,13 @@ import { defineRule } from '@oxlint/plugins'
 import { isEffectArrayReference } from '../shared/effect-array-import.ts'
 
 const MESSAGE =
-  'Nesting one Effect Array call inside another loses the inferred element type at the boundary. Chain the calls through pipe so each step keeps its inference.'
+  'Passing one Effect Array call as the data argument of another loses the inferred element type at the boundary. Chain the calls through pipe so each step keeps its inference.'
+
+const FUNCTION_BOUNDARIES = new Set([
+  'ArrowFunctionExpression',
+  'FunctionExpression',
+  'FunctionDeclaration',
+])
 
 function isEffectArrayMethodCall(
   sourceCode: SourceCode,
@@ -24,14 +30,13 @@ function enclosingArrayCalls(
 ): readonly ESTree.CallExpression[] {
   const { parent } = descendant
 
-  if (parent === null) {
+  if (parent === null || FUNCTION_BOUNDARIES.has(parent.type)) {
     return []
   }
 
   const outerCalls = enclosingArrayCalls(sourceCode, parent)
   const nestsTheDescendant =
-    isEffectArrayMethodCall(sourceCode, parent) &&
-    parent.arguments.some((argument) => argument === descendant)
+    isEffectArrayMethodCall(sourceCode, parent) && parent.arguments[0] === descendant
 
   return nestsTheDescendant ? [parent, ...outerCalls] : outerCalls
 }
@@ -39,7 +44,7 @@ function enclosingArrayCalls(
 export default defineRule({
   meta: {
     type: 'problem',
-    docs: { description: 'forbid nesting one effect Array method call inside another' },
+    docs: { description: "forbid an effect Array call in another one's data argument" },
     messages: { nestedEffectArrayMethods: MESSAGE },
   },
   create(context) {
