@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/jliocsar/begone-slop/compare/v0.2.0...v0.2.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **padding-line-between-statements:** match the declaration under export ([#9](https://github.com/jliocsar/begone-slop/issues/9)) ([908f64a](https://github.com/jliocsar/begone-slop/commit/908f64ab3ee7806812d2dd356e8ebdd5221afa4d))
+
 ## [0.2.0](https://github.com/jliocsar/begone-slop/compare/v0.1.4...v0.2.0) (2026-10-04)
 
 
