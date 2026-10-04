@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/jliocsar/begone-slop/compare/v0.1.4...v0.2.0) (2026-10-04)
+
+
+### Features
+
+* drop the effect and effect-oxlint dependencies ([#6](https://github.com/jliocsar/begone-slop/issues/6)) ([64c8b82](https://github.com/jliocsar/begone-slop/commit/64c8b82b0637fdf17249592d044ea04e347bd5e1))
+
+
+### Miscellaneous Chores
+
+* release 0.2.0 ([e069b98](https://github.com/jliocsar/begone-slop/commit/e069b9838c64c82a86ce2944cc6caea1842403eb))
+
 ## [0.1.4](https://github.com/jliocsar/begone-slop/compare/v0.1.3...v0.1.4) (2026-08-15)
 
 
