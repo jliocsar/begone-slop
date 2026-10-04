@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/jliocsar/begone-slop/compare/v0.2.4...v0.2.5) (2026-10-04)
+
+
+### Bug Fixes
+
+* **no-nested-effect-array-methods:** skip data-last calls inside pipe ([#17](https://github.com/jliocsar/begone-slop/issues/17)) ([c7b24b4](https://github.com/jliocsar/begone-slop/commit/c7b24b4b816a7684c6d540a6b249d0f0b2282ef1))
+
 ## [0.2.4](https://github.com/jliocsar/begone-slop/compare/v0.2.3...v0.2.4) (2026-10-04)
 
 
