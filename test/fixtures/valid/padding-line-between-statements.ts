@@ -88,3 +88,26 @@ const Shape = class {
 }
 
 const afterClassExpression = 1
+
+const GROUPED_FIRST = 1
+const GROUPED_SECOND = 2
+
+export const EXPORTED_FIRST = 1
+export const EXPORTED_SECOND = 2
+
+export const notScreaming = () => EXPORTED_FIRST
+
+export const spacedCamel = 1
+
+export const ANOTHER_GROUP = 3
+// A comment between grouped constants is left alone.
+
+export const AFTER_COMMENT = 4
+
+function localsKeepTheirSpacing(): number {
+  const first = 1
+
+  const second = 2
+
+  return first + second
+}

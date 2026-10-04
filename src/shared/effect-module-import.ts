@@ -3,7 +3,6 @@ import { findVariable } from './binding-scope.ts'
 import { stringLiteralValue } from './literal.ts'
 
 const EFFECT_PACKAGE = 'effect'
-
 const TYPE_ONLY = 'type'
 
 function namesTheExport(imported: ESTree.ModuleExportName, exportName: string): boolean {

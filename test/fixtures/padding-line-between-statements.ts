@@ -70,3 +70,22 @@ declare module 'virtual' {
   const declared: number
   function load(): void
 }
+
+const PRIVATE_FIRST = 1
+
+const PRIVATE_SECOND = 2
+export const PUBLIC_FIRST = 1
+export const PUBLIC_SECOND = 2
+
+export const PUBLIC_THIRD = 3
+export const afterConstants = () => PUBLIC_THIRD
+export const AFTER_CAMEL = 4
+
+function localGroup(): number {
+  const LIMIT = 1
+
+  const MARGIN = 2
+  const total = LIMIT + MARGIN
+
+  return total
+}

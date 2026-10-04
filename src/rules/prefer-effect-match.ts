@@ -2,9 +2,7 @@ import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
 
 const EQUALITY_OPERATORS = new Set(['==', '===', '!=', '!=='])
-
 const MINIMUM_LITERAL_CHECKS = 2
-
 const STABLE_LEAVES = new Set(['Identifier', 'Literal', 'ThisExpression'])
 
 const MESSAGE =

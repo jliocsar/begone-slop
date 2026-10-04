@@ -59,6 +59,22 @@
           "blankLine": "any",
           "prev": ["singleline-const", "singleline-let"],
           "next": ["singleline-const", "singleline-let"]
+        },
+        {
+          "blankLine": "always",
+          "prev": ["screaming-const", "exported-screaming-const"],
+          "next": "*"
+        },
+        {
+          "blankLine": "always",
+          "prev": "*",
+          "next": ["screaming-const", "exported-screaming-const"]
+        },
+        { "blankLine": "never", "prev": "screaming-const", "next": "screaming-const" },
+        {
+          "blankLine": "never",
+          "prev": "exported-screaming-const",
+          "next": "exported-screaming-const"
         }
       ]
     ]

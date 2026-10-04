@@ -2,13 +2,9 @@ import type { Definition, ESTree, SourceCode } from '@oxlint/plugins'
 import { findVariable } from './binding-scope.ts'
 
 const LAYER_BINDING = 'Layer'
-
 const PIPE = 'pipe'
-
 const EFFECT_PACKAGE = 'effect'
-
 const EFFECT_LAYER_MODULE = 'effect/Layer'
-
 const PIPE_MODULES = new Set([EFFECT_PACKAGE, 'effect/Function'])
 
 function namesTheExport(imported: ESTree.ModuleExportName, exportName: string): boolean {

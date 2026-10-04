@@ -13,11 +13,8 @@ const DEFINITELY_OBJECT_TYPES = new Set([
 ])
 
 const READONLY_TYPE_NAME = 'Readonly'
-
 const RECORD_TYPE_NAME = 'Record'
-
 const PROPERTY_KEY_TYPE_NAME = 'PropertyKey'
-
 const WHITESPACE = /\s+/gu
 
 function typeArgument(type: ESTree.TSTypeReference, index: number): ESTree.TSType | undefined {

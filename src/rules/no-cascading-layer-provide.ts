@@ -4,7 +4,6 @@ import { isEffectLayerReference, pipeStages } from '../shared/layer-import.ts'
 import { stringLiteralValue } from '../shared/literal.ts'
 
 const PROVISIONING_METHODS = new Set(['provide', 'provideMerge'])
-
 const CASCADING_STAGE_COUNT = 2
 
 const MESSAGE =

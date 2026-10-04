@@ -3,7 +3,6 @@ import type { Comment, ESTree } from '@oxlint/plugins'
 export type TypeAssertion = ESTree.TSAsExpression | ESTree.TSTypeAssertion
 
 const CONST_TYPE_NAME = 'const'
-
 const SAFETY_COMMENT = /^[\s*]*SAFETY:/u
 
 export function isTypeAssertion(node: ESTree.Node): node is TypeAssertion {

@@ -27,7 +27,6 @@ const MESSAGE =
   'The explicit {{target}} type on {{subject}} discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.'
 
 const ASSERTION_SUBJECT = 'assertion'
-
 const ACCUMULATOR_TARGET_KINDS = new Set(['generic container', 'open dictionary'])
 
 function annotationTarget(

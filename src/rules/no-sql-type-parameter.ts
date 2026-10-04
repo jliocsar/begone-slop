@@ -4,7 +4,6 @@ import { findVariable, isConstDeclarator, variableDeclarator } from '../shared/b
 import { stringLiteralValue } from '../shared/literal.ts'
 
 const SQL_TAG = 'sql'
-
 const UNSAFE = 'unsafe'
 
 const MESSAGE =

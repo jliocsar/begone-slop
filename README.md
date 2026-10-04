@@ -145,13 +145,30 @@ sense scoped to test files:
 | `no-reexport-only-modules`           | barrel modules that only re-export                    |   ✅   |
 | `no-conditional-empty-object-spread` | omitting a field by spreading `{}`                    |   ✅   |
 | `statement-order`                    | top-level declarations out of order                   |   ✅   |
-| `padding-line-between-statements`    | missing blank lines, per a declarative spec           |   ✅   |
+| `padding-line-between-statements`    | missing or extra blank lines, per a declarative spec  |   ✅   |
 | `expect-padding`                     | a run of `expect()` calls not isolated by blank lines |   —    |
 
 `no-comments` is the opinionated one. It holds that a name needing a sentence beside it is the wrong
 name, and that durable knowledge belongs in a document rather than a line that drifts out of sync
 with the code above it. It leaves `SAFETY:` comments and tooling directives (`oxlint-disable`,
 `@ts-expect-error`, triple-slash references, shebangs) alone.
+
+The layout rules group single-line `SCREAMING_CASE` constants. Private ones sit together with no
+blank line between them, exported ones form a second group below them, and a blank line fences each
+group off from everything else. `lint:fix` collapses the blank lines inside a group. In
+`padding-line-between-statements` that is the `screaming-const` and `exported-screaming-const`
+statement types with `"blankLine": "never"`, and `statement-order` reports a private constant placed
+after an exported one, unless it reads that exported value:
+
+```ts
+const TAG_PATTERN = /^[a-z]+$/u
+const DEFAULT_URL = 'https://example.com'
+
+export const POD_TAG = 'pie'
+export const RECIPE_TAG_PREFIX = 'pie-recipe-'
+
+export const isValidTag = (tag: string) => TAG_PATTERN.test(tag)
+```
 
 ## The tsconfig
 
