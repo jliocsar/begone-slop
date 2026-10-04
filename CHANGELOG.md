@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/jliocsar/begone-slop/compare/v0.2.5...v0.2.6) (2026-10-04)
+
+
+### Bug Fixes
+
+* resolve Effect imports and close tier-3 adversarial gaps ([6a30362](https://github.com/jliocsar/begone-slop/commit/6a30362a5da4cbfec0a44ac43bafc84698a2bc0b))
+
 ## [0.2.5](https://github.com/jliocsar/begone-slop/compare/v0.2.4...v0.2.5) (2026-10-04)
 
 
