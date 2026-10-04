@@ -16,3 +16,10 @@ Effect.catchFilter(program, findTimeout, () => Effect.void, () => Effect.unit)
 Effect.catchDefect(() => Effect.void)
 Effect.catchEager(program, () => Effect.void)
 Effect.catchTag('Timeout', (error) => Effect.logError(error), () => Effect.void)
+import { Effect } from 'effect'
+import { Effect as Renamed } from 'effect'
+import * as Fx from 'effect/Effect'
+Renamed.catch(program, () => Renamed.void)
+pipe(program, Fx.catch(() => Fx.void))
+pipe(program, Fx.catchTag('Timeout', () => Effect.void))
+Effect['catch'](program, () => Effect['void'])

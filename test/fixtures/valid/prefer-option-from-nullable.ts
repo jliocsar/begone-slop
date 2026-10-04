@@ -1,3 +1,6 @@
+import { Option } from 'effect'
+import * as Result from 'effect/Result'
+
 const alreadyIdiomatic = Option.fromNullable(value)
 
 // The `some` arm must wrap the tested value itself, not something derived from it.
@@ -11,7 +14,7 @@ const againstZero = value !== 0 ? Option.some(value) : Option.none()
 const bareNone = value !== null ? Option.some(value) : Option.none
 const bareSome = value !== null ? Option.some : Option.none()
 
-// Aliased imports are out of reach of a purely syntactic check.
+// Receivers that are not an import of Option.
 const aliased = value !== null ? O.some(value) : O.none()
 const namespaced = value !== null ? Effect.Option.some(value) : Effect.Option.none()
 
@@ -25,3 +28,5 @@ const plainTernary = value !== null ? value : null
 // A nullable test elsewhere in the ternary is not the pattern.
 const nestedTest = (value !== null) === flag ? Option.some(value) : Option.none()
 const nullishCoalesced = (value ?? fallback) ? Option.some(value) : Option.none()
+const shadowed = (Option: Maybe) => (value !== null ? Option.some(value) : Option.none())
+const otherNamespace = value !== null ? Result.some(value) : Option.none()

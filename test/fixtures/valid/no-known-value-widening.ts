@@ -45,3 +45,19 @@ class MethodOverloads {
   read(key: string): unknown
   read(key?: string): unknown { return { key } }
 }
+type Bag = Record<string, Command>
+function shadowedParameter<Bag extends string>(): Bag {
+  const out: Bag = 'x' as Bag
+  return out
+}
+class ShadowedClass<Bag extends string> { value: Bag = 'x' as Bag }
+type Opaque = unknown
+function localOpaque() {
+  type Opaque = string
+  return (): Opaque => 'a'
+}
+function localInterface() {
+  interface Opaque { readonly start: Command }
+  const opaque: Opaque = { start: startCommand }
+  return opaque
+}

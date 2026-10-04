@@ -5,8 +5,7 @@ import {
   lexicalTypeParameterNames,
   onFunctionSignatures,
 } from '../shared/function-signature.ts'
-
-type AliasesByName = ReadonlyMap<string, ESTree.TSTypeAliasDeclaration>
+import { isTypeAliasDeclaration, nearestTypeDeclarations } from '../shared/type-environment.ts'
 
 const PROMISE_TYPE_NAMES = new Set(['Promise', 'PromiseLike'])
 
@@ -24,7 +23,7 @@ function referencedAliasName(type: ESTree.TSType): string | undefined {
 }
 
 function resolvesToUnknown(
-  aliases: AliasesByName,
+  scope: ESTree.Node,
   shadowedAliases: ReadonlySet<string>,
   visited: readonly string[],
   type: ESTree.TSType,
@@ -34,7 +33,7 @@ function resolvesToUnknown(
   }
 
   if (type.type === 'TSUnionType') {
-    return type.types.some((member) => resolvesToUnknown(aliases, shadowedAliases, visited, member))
+    return type.types.some((member) => resolvesToUnknown(scope, shadowedAliases, visited, member))
   }
 
   if (
@@ -44,7 +43,7 @@ function resolvesToUnknown(
   ) {
     const value = type.typeArguments?.params[0]
 
-    return value !== undefined && resolvesToUnknown(aliases, shadowedAliases, visited, value)
+    return value !== undefined && resolvesToUnknown(scope, shadowedAliases, visited, value)
   }
 
   const name = referencedAliasName(type)
@@ -53,33 +52,13 @@ function resolvesToUnknown(
     return false
   }
 
-  const alias = aliases.get(name)
+  const alias = nearestTypeDeclarations(scope, name).findLast(isTypeAliasDeclaration)
 
   if (alias === undefined || (alias.typeParameters ?? null) !== null) {
     return false
   }
 
-  return resolvesToUnknown(aliases, shadowedAliases, [...visited, name], alias.typeAnnotation)
-}
-
-function topLevelAlias(
-  statement: ESTree.Directive | ESTree.Statement,
-): ESTree.TSTypeAliasDeclaration | undefined {
-  const declaration =
-    statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement
-
-  return declaration !== null && declaration.type === 'TSTypeAliasDeclaration'
-    ? declaration
-    : undefined
-}
-
-function topLevelAliases(program: ESTree.Program): AliasesByName {
-  return new Map(
-    program.body
-      .map(topLevelAlias)
-      .filter((alias): alias is ESTree.TSTypeAliasDeclaration => alias !== undefined)
-      .map((alias) => [alias.id.name, alias]),
-  )
+  return resolvesToUnknown(scope, shadowedAliases, [...visited, name], alias.typeAnnotation)
 }
 
 export default defineRule({
@@ -89,8 +68,6 @@ export default defineRule({
     messages: { unknownReturn: MESSAGE },
   },
   create(context) {
-    let aliases: AliasesByName = new Map()
-
     function reportUnknownReturn(node: FunctionSignatureNode) {
       const type = node.returnType?.typeAnnotation
 
@@ -98,16 +75,11 @@ export default defineRule({
         return
       }
 
-      if (resolvesToUnknown(aliases, lexicalTypeParameterNames(node), [], type)) {
+      if (resolvesToUnknown(node, lexicalTypeParameterNames(node), [], type)) {
         context.report({ node: type, messageId: 'unknownReturn' })
       }
     }
 
-    return {
-      Program(program) {
-        aliases = topLevelAliases(program)
-      },
-      ...onFunctionSignatures(reportUnknownReturn),
-    }
+    return onFunctionSignatures(reportUnknownReturn)
   },
 })

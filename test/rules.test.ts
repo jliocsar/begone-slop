@@ -10,38 +10,57 @@ const CONFIGS = `${import.meta.dir}/tmp`
 
 const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
-const CASES: { rule: string; lines: number[] }[] = [
+const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
   { rule: 'no-shadowed-error-field', lines: [1, 2, 3, 4, 5, 6, 7] },
-  { rule: 'expect-padding', lines: [2, 4] },
-  { rule: 'padding-line-between-statements', lines: [2, 5, 9, 12, 13, 14, 21, 25, 28, 36] },
+  { rule: 'expect-padding', lines: [2, 4, 8, 10] },
+  {
+    rule: 'padding-line-between-statements',
+    lines: [2, 5, 9, 12, 13, 14, 21, 25, 28, 36, 40, 47, 51, 54, 59, 62, 67, 71],
+  },
+  {
+    rule: 'padding-line-between-statements',
+    fixture: 'padding-line-between-statements.export-default.ts',
+    lines: [2, 5],
+  },
   { rule: 'statement-order', lines: [5] },
   { rule: 'no-switch', lines: [1, 2] },
   { rule: 'no-try-catch', lines: [1, 2] },
   { rule: 'no-in-operator', lines: [1, 2] },
-  { rule: 'no-service-option', lines: [1, 2, 3] },
-  { rule: 'no-effect-asvoid', lines: [1, 2, 3] },
+  { rule: 'no-service-option', lines: [1, 2, 3, 7, 8, 9] },
+  { rule: 'no-effect-asvoid', lines: [1, 2, 3, 7, 8, 9, 10] },
   { rule: 'no-disable-validation', lines: [1, 2, 3, 4, 5, 6] },
   { rule: 'no-banned-type-assertions', lines: [1, 2, 3, 4, 5] },
   { rule: 'no-optional-function-parameters', lines: [1, 2, 3, 4, 5, 6, 6] },
-  { rule: 'no-sql-type-parameter', lines: [1, 2, 3] },
+  { rule: 'no-sql-type-parameter', lines: [1, 2, 3, 4, 5, 6, 8] },
   { rule: 'pipe-max-arguments', lines: [1] },
   { rule: 'no-reflect-get', lines: [1, 2] },
   { rule: 'no-reflect-apply', lines: [1, 2] },
   { rule: 'no-conditional-empty-object-spread', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
   { rule: 'require-safety-comment-for-type-assertion', lines: [1, 2, 3, 4, 5, 10, 13, 16, 21] },
-  { rule: 'no-chained-type-assertions', lines: [1, 2, 3, 4, 5] },
+  {
+    rule: 'require-safety-comment-for-type-assertion',
+    fixture: 'require-safety-comment-for-type-assertion.jsx.tsx',
+    lines: [3, 9, 16],
+  },
+  { rule: 'no-chained-type-assertions', lines: [1, 2, 3, 4, 5, 6, 7] },
   { rule: 'no-unknown-parameters', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
-  { rule: 'no-unknown-returns', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] },
+  {
+    rule: 'no-unknown-returns',
+    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21],
+  },
   { rule: 'no-unknown-type-aliases', lines: [1, 2, 3, 4, 5, 6, 7] },
   {
     rule: 'no-silent-error-swallow',
-    lines: [1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 17, 18],
+    lines: [1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 17, 18, 22, 23, 24, 25],
   },
   { rule: 'no-shadowed-standard-array-static', lines: [2, 3, 4, 5, 6] },
   { rule: 'no-nested-effect-array-methods', lines: [2, 6, 7, 8, 12, 13] },
-  { rule: 'prefer-option-from-nullable', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { rule: 'prefer-effect-match', lines: [1, 2, 3, 4, 5, 6] },
+  {
+    rule: 'prefer-option-from-nullable',
+    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18, 19],
+  },
+  { rule: 'prefer-effect-match', lines: [1, 2, 3, 4, 5, 6, 7, 8] },
   { rule: 'no-comments', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
   {
     rule: 'no-cascading-layer-provide',
@@ -52,14 +71,14 @@ const CASES: { rule: string; lines: number[] }[] = [
   { rule: 'no-unsafe-dictionary-type', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
   {
     rule: 'no-known-value-widening',
-    lines: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 26, 27],
+    lines: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 26, 27, 29, 30, 31],
   },
   { rule: 'no-widen-then-assert', lines: [2, 4, 6, 8, 10, 13, 16, 22, 24, 25, 26] },
   {
     rule: 'no-object-parameters',
     lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 19, 20, 20],
   },
-  { rule: 'no-module-mocking', lines: [1, 2, 3, 4, 6, 8, 10, 12] },
+  { rule: 'no-module-mocking', lines: [1, 2, 3, 4, 6, 8, 10, 12, 13, 14, 16, 18, 19, 21] },
   { rule: 'no-runtime-typeof', lines: [1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10] },
 ]
 
@@ -67,7 +86,7 @@ const UNIX_REPORT_LINE =
   /^[^:]+:(?<line>\d+):\d+: (?<message>.*) \[(?:Error|Warning)\/(?<code>[^\]]+)\]$/u
 
 const VALID_FIXTURE_FILES = globalThis.Array.from(
-  new Bun.Glob('*.{ts,tsx}').scanSync({ cwd: VALID_FIXTURES }),
+  new Bun.Glob('*.{ts,tsx,mts,cts}').scanSync({ cwd: VALID_FIXTURES }),
 )
 
 const RULES_WITH_VALID_FIXTURE = new Set(
@@ -109,9 +128,9 @@ async function runRule(
   }
 }
 
-for (const { rule, lines } of CASES) {
-  test(`${rule} rejects its fixture`, async () => {
-    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${rule}.ts`)
+for (const { rule, lines, fixture = `${rule}.ts` } of CASES) {
+  test(`${rule} rejects ${fixture}`, async () => {
+    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${fixture}`)
     const unrendered = messages.filter((message) => message.includes('{{') || message.length === 0)
 
     expect(reported).toEqual(lines)

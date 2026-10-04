@@ -30,6 +30,30 @@ function commentsBefore(sourceCode: SourceCode, current: ESTree.Node): readonly 
   return [...sourceCode.getCommentsBefore(current), ...chainLinkComments]
 }
 
+function previousJsxSibling(current: ESTree.Node): ESTree.JSXChild | undefined {
+  const { parent } = current
+
+  if (parent?.type !== 'JSXElement' && parent?.type !== 'JSXFragment') {
+    return undefined
+  }
+
+  const index = parent.children.findIndex((child) => child === current)
+
+  return parent.children
+    .slice(0, Math.max(index, 0))
+    .findLast((child) => child.type !== 'JSXText' || child.value.trim() !== '')
+}
+
+function hasJsxSafetyComment(sourceCode: SourceCode, current: ESTree.Node): boolean {
+  const sibling = previousJsxSibling(current)
+
+  return (
+    sibling?.type === 'JSXExpressionContainer' &&
+    sibling.expression.type === 'JSXEmptyExpression' &&
+    sourceCode.getCommentsInside(sibling).some(isSafetyComment)
+  )
+}
+
 function hasSafetyComment(
   sourceCode: SourceCode,
   node: TypeAssertion,
@@ -39,7 +63,7 @@ function hasSafetyComment(
     (comment) => comment.end <= node.start && isSafetyComment(comment),
   )
 
-  if (justified) {
+  if (justified || hasJsxSafetyComment(sourceCode, current)) {
     return true
   }
 

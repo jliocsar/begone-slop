@@ -1,11 +1,16 @@
-import type { ESTree, Range, Span } from '@oxlint/plugins'
+import type { ESTree, Range, SourceCode, Span } from '@oxlint/plugins'
 
 export function statementsOf(node: ESTree.Node): readonly ESTree.Node[] {
   if (node.type === 'SwitchCase') {
     return node.consequent
   }
 
-  if (node.type === 'Program' || node.type === 'BlockStatement' || node.type === 'StaticBlock') {
+  if (
+    node.type === 'Program' ||
+    node.type === 'BlockStatement' ||
+    node.type === 'StaticBlock' ||
+    node.type === 'TSModuleBlock'
+  ) {
     return node.body
   }
 
@@ -24,6 +29,18 @@ export function adjacentPairs(
 
 export function blankLinesBetween(previous: Span, current: Span): number {
   return current.loc.start.line - previous.loc.end.line - 1
+}
+
+export function fenceAnchor(
+  sourceCode: SourceCode,
+  previous: ESTree.Node,
+  leading: ESTree.Node,
+): Span {
+  const introducing = sourceCode
+    .getCommentsBefore(leading)
+    .filter((comment) => comment.loc.start.line > previous.loc.end.line)
+
+  return introducing[0] ?? leading
 }
 
 export function lineStartRange(node: Span): Range {

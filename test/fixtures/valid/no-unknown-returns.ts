@@ -54,3 +54,19 @@ interface Contract {
   method<Value>(): Value
   handler: () => Shape
 }
+
+type Local = unknown
+
+function blockScoped() {
+  type Local = string
+
+  return (): Local => 'a'
+}
+
+function interfaceScoped() {
+  interface Local {
+    readonly value: string
+  }
+
+  return (): Local => ({ value: 'a' })
+}

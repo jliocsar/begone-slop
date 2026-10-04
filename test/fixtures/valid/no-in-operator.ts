@@ -7,3 +7,10 @@ const hasStatus = Predicate.hasProperty(response, 'status')
 const included = keys.includes('status')
 const inWord = describeIn(response)
 const inString = 'the key is in the record'
+class Branded {
+  #secret = 1
+
+  static isBranded(value: object): boolean {
+    return #secret in value
+  }
+}

@@ -1,9 +1,13 @@
 import type { ESTree } from '@oxlint/plugins'
 import { resolvesToDictionary } from './dictionary-values.ts'
+import { lexicalTypeParameterNames } from './function-signature.ts'
 import {
   aliasSubstitution,
   isBuiltIn,
+  isInterfaceDeclaration,
+  isTypeAliasDeclaration,
   isUnappliedReferenceTo,
+  nearestTypeDeclarations,
   TRANSPARENT_WRAPPERS,
   type TypeAliasEnvironment,
   type TypeEnvironment,
@@ -160,6 +164,16 @@ function aliasBroadTargetOfName(
   )
 }
 
+function interfaceTarget(
+  declarations: readonly ESTree.TSInterfaceDeclaration[],
+): WideningTarget | undefined {
+  return declarations.some((declaration) =>
+    declaration.body.body.some((member) => member.type === 'TSIndexSignature'),
+  )
+    ? wideningTarget('open dictionary')
+    : undefined
+}
+
 function genericContainerTarget(
   alias: ESTree.TSTypeAliasDeclaration,
   reference: ESTree.TSTypeReference,
@@ -183,6 +197,10 @@ function wideningTargetOfName(
   name: string,
   environment: TypeEnvironment,
 ): WideningTarget | undefined {
+  if (lexicalTypeParameterNames(reference).has(name)) {
+    return undefined
+  }
+
   if (TRANSPARENT_WRAPPERS.has(name) && isBuiltIn(name, environment)) {
     const wrapped = reference.typeArguments?.params[0]
 
@@ -193,7 +211,14 @@ function wideningTargetOfName(
     return wideningTarget('open dictionary')
   }
 
-  const alias = environment.aliases.get(name)
+  const declarations = nearestTypeDeclarations(reference, name)
+  const interfaces = declarations.filter(isInterfaceDeclaration)
+
+  if (interfaces.length > 0) {
+    return interfaceTarget(interfaces)
+  }
+
+  const alias = declarations.findLast(isTypeAliasDeclaration)
 
   if (alias === undefined) {
     return undefined
@@ -233,7 +258,9 @@ export function classifyWideningTarget(
   }
 
   if (unwrapped.type === 'TSMappedType') {
-    return wideningTarget('open dictionary')
+    return isBroadMappedKey(unwrapped.constraint, environment, new Map())
+      ? wideningTarget('open dictionary')
+      : wideningTarget('anonymous object')
   }
 
   if (unwrapped.type !== 'TSTypeReference') {

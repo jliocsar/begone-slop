@@ -1,8 +1,9 @@
-import type { Diagnostic, ESTree, Options, SourceCode, Span } from '@oxlint/plugins'
+import type { Diagnostic, ESTree, Options, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
 import {
   adjacentPairs,
   blankLinesBetween,
+  fenceAnchor,
   lineBreakOf,
   lineStartRange,
   statementsOf,
@@ -74,7 +75,7 @@ const STATEMENT_MATCHERS = {
   'block-like': isBlockLike,
   function: (node) => node.type === 'FunctionDeclaration' || node.type === 'TSDeclareFunction',
   class: (node) => node.type === 'ClassDeclaration',
-  import: (node) => node.type === 'ImportDeclaration',
+  import: (node) => node.type === 'ImportDeclaration' || node.type === 'TSImportEqualsDeclaration',
   'singleline-const': (node) => isSingleLineDeclaration(node, 'const'),
   'singleline-let': (node) => isSingleLineDeclaration(node, 'let'),
 } satisfies Record<StatementType, (node: ESTree.Node) => boolean>
@@ -100,6 +101,20 @@ function isBlockBodiedFunction(node: ESTree.Node | null | undefined): boolean {
   return isFunction && node.body?.type === 'BlockStatement'
 }
 
+function isBlockBodiedValue(node: ESTree.Node | null | undefined): boolean {
+  return node?.type === 'ClassExpression' || isBlockBodiedFunction(node)
+}
+
+function isAssignedBlock(node: ESTree.Node): boolean {
+  if (node.type !== 'ExpressionStatement') {
+    return false
+  }
+
+  const { expression } = node
+
+  return expression.type === 'AssignmentExpression' && isBlockBodiedValue(expression.right)
+}
+
 function isImmediatelyInvokedBlock(node: ESTree.Node): boolean {
   if (node.type !== 'ExpressionStatement') {
     return false
@@ -116,12 +131,16 @@ function isBlockLike(node: ESTree.Node): boolean {
     return true
   }
 
-  if (isImmediatelyInvokedBlock(node)) {
+  if (node.type === 'LabeledStatement') {
+    return isBlockLike(node.body)
+  }
+
+  if (isImmediatelyInvokedBlock(node) || isAssignedBlock(node) || isBlockBodiedValue(node)) {
     return true
   }
 
   if (node.type === 'VariableDeclaration') {
-    return node.declarations.some((declarator) => isBlockBodiedFunction(declarator.init))
+    return node.declarations.some((declarator) => isBlockBodiedValue(declarator.init))
   }
 
   return false
@@ -187,15 +206,6 @@ function leadingNode(node: ESTree.Node): ESTree.Node {
     : node
 }
 
-function fenceAnchor(sourceCode: SourceCode, previous: ESTree.Node, current: ESTree.Node): Span {
-  const leading = leadingNode(current)
-  const introducing = sourceCode
-    .getCommentsBefore(leading)
-    .filter((comment) => comment.loc.start.line > previous.loc.end.line)
-
-  return introducing[0] ?? leading
-}
-
 function missingBlankLine(
   sourceCode: SourceCode,
   specs: readonly Spec[],
@@ -206,7 +216,7 @@ function missingBlankLine(
     return undefined
   }
 
-  const anchor = fenceAnchor(sourceCode, previous, current)
+  const anchor = fenceAnchor(sourceCode, previous, leadingNode(current))
 
   if (blankLinesBetween(previous, anchor) !== 0) {
     return undefined
@@ -246,6 +256,7 @@ export default defineRule({
       BlockStatement: checkBody,
       SwitchCase: checkBody,
       StaticBlock: checkBody,
+      TSModuleBlock: checkBody,
     }
   },
 })

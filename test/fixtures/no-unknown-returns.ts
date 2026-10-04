@@ -17,3 +17,5 @@ interface Constructs { new (): unknown }
 type Aliased = unknown
 export type Exported = unknown
 type Chained = Aliased
+function outerScoped(): Aliased { type Aliased = string; return 1 }
+function localUnknown() { type Hidden = unknown; return (): Hidden => 1 }

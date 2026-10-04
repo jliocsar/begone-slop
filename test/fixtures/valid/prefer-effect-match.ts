@@ -32,3 +32,19 @@ const throughConsequent = value === 'ready' ? (value === 'warm' ? 1 : 2) : 3
 
 // One literal check followed by a plain condition.
 const mixedTail = value === 'ready' ? 1 : ready ? 2 : 3
+
+// Each call, construction, await, yield or update reads a fresh value, so the
+// repeated text is not one subject.
+const called = classify(input) === 1 ? 'a' : classify(input) === 2 ? 'b' : 'c'
+const sideEffect = next() === 'a' ? 1 : next() === 'b' ? 2 : 3
+const constructed = new Clock().tick === 1 ? 'a' : new Clock().tick === 2 ? 'b' : 'c'
+const incremented = counter++ === 1 ? 'a' : counter++ === 2 ? 'b' : 'c'
+const assigned = (slot = read()) === 1 ? 'a' : (slot = read()) === 2 ? 'b' : 'c'
+const tagged = tag`x` === 1 ? 'a' : tag`x` === 2 ? 'b' : 'c'
+const indexedByCall = record[next()] === 1 ? 'a' : record[next()] === 2 ? 'b' : 'c'
+async function awaited() {
+  return (await read()) === 1 ? 'a' : (await read()) === 2 ? 'b' : 'c'
+}
+function* yielded() {
+  return (yield) === 1 ? 'a' : (yield) === 2 ? 'b' : 'c'
+}

@@ -1,3 +1,5 @@
+import { Effect } from 'effect'
+
 // Requiring the service is the shape this rule asks for.
 const required = Effect.service(CacheService)
 const provided = Effect.provide(program, CacheLayer)
@@ -6,8 +8,9 @@ const provided = Effect.provide(program, CacheLayer)
 const services = Effect.serviceOptional(CacheService)
 const constant = Effect.serviceConstants(CacheService)
 
-// An aliased import is deliberately out of reach of a purely syntactic check.
-const aliasedModule = E.serviceOption(CacheService)
+// A receiver that is not an import of Effect.
+const unimportedReceiver = E.serviceOption(CacheService)
+const shadowed = (Effect: Registry) => Effect.serviceOption(CacheService)
 
 // Some other receiver's member of that name.
 const otherReceiver = registry.serviceOption(CacheService)

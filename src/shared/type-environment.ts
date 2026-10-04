@@ -2,6 +2,12 @@ import type { ESTree } from '@oxlint/plugins'
 
 export type TypeAliasEnvironment = ReadonlyMap<string, ESTree.TSType>
 
+export type ScopedTypeDeclaration =
+  | ESTree.Class
+  | ESTree.TSEnumDeclaration
+  | ESTree.TSInterfaceDeclaration
+  | ESTree.TSTypeAliasDeclaration
+
 export type TypeEnvironment = {
   readonly aliases: ReadonlyMap<string, ESTree.TSTypeAliasDeclaration>
   readonly interfaces: ReadonlyMap<string, readonly ESTree.TSInterfaceDeclaration[]>
@@ -70,11 +76,11 @@ function boundNames(declaration: ESTree.Node): readonly string[] {
   return []
 }
 
-function isTypeAliasDeclaration(node: ESTree.Node): node is ESTree.TSTypeAliasDeclaration {
+export function isTypeAliasDeclaration(node: ESTree.Node): node is ESTree.TSTypeAliasDeclaration {
   return node.type === 'TSTypeAliasDeclaration'
 }
 
-function isInterfaceDeclaration(node: ESTree.Node): node is ESTree.TSInterfaceDeclaration {
+export function isInterfaceDeclaration(node: ESTree.Node): node is ESTree.TSInterfaceDeclaration {
   return node.type === 'TSInterfaceDeclaration'
 }
 
@@ -103,6 +109,53 @@ function interfacesByName(
   }
 
   return grouped
+}
+
+function scopeBody(node: ESTree.Node): readonly (ESTree.Directive | ESTree.Statement)[] {
+  if (
+    node.type === 'Program' ||
+    node.type === 'BlockStatement' ||
+    node.type === 'StaticBlock' ||
+    node.type === 'TSModuleBlock'
+  ) {
+    return node.body
+  }
+
+  return []
+}
+
+function scopedTypeDeclaration(
+  statement: ESTree.Directive | ESTree.Statement,
+): ScopedTypeDeclaration | undefined {
+  const declaration = declaredStatement(statement)
+
+  if (
+    declaration?.type === 'TSTypeAliasDeclaration' ||
+    declaration?.type === 'TSInterfaceDeclaration' ||
+    declaration?.type === 'TSEnumDeclaration' ||
+    declaration?.type === 'ClassDeclaration'
+  ) {
+    return declaration
+  }
+
+  return undefined
+}
+
+export function nearestTypeDeclarations(
+  node: ESTree.Node,
+  name: string,
+): readonly ScopedTypeDeclaration[] {
+  const { parent } = node
+
+  if (parent === null) {
+    return []
+  }
+
+  const declarations = scopeBody(parent)
+    .map(scopedTypeDeclaration)
+    .filter((declaration): declaration is ScopedTypeDeclaration => declaration?.id?.name === name)
+
+  return declarations.length > 0 ? declarations : nearestTypeDeclarations(parent, name)
 }
 
 export function createTypeEnvironment(program: ESTree.Node): TypeEnvironment {
