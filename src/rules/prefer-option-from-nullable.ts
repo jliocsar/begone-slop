@@ -1,5 +1,6 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { effectModuleMemberName } from '../shared/effect-module-import.ts'
 
 const OPTION_MODULE = 'Option'
 
@@ -50,6 +51,7 @@ function isSameReference(left: ESTree.Node, right: ESTree.Node): boolean {
 }
 
 function optionMethodArguments(
+  sourceCode: SourceCode,
   node: ESTree.Expression,
   method: string,
 ): readonly ESTree.Argument[] | undefined {
@@ -60,27 +62,23 @@ function optionMethodArguments(
   const callee =
     node.callee.type === 'TSInstantiationExpression' ? node.callee.expression : node.callee
 
-  if (
-    callee.type !== 'MemberExpression' ||
-    callee.object.type !== 'Identifier' ||
-    callee.object.name !== OPTION_MODULE ||
-    callee.property.type !== 'Identifier' ||
-    callee.property.name !== method
-  ) {
-    return undefined
-  }
-
-  return node.arguments
+  return effectModuleMemberName(sourceCode, callee, OPTION_MODULE) === method
+    ? node.arguments
+    : undefined
 }
 
-function wrapsSubject(node: ESTree.Expression, subject: ESTree.Node): boolean {
-  const [wrapped, ...rest] = optionMethodArguments(node, 'some') ?? []
+function wrapsSubject(
+  sourceCode: SourceCode,
+  node: ESTree.Expression,
+  subject: ESTree.Node,
+): boolean {
+  const [wrapped, ...rest] = optionMethodArguments(sourceCode, node, 'some') ?? []
 
   return wrapped !== undefined && rest.length === 0 && isSameReference(wrapped, subject)
 }
 
-function isNoneCall(node: ESTree.Expression): boolean {
-  return optionMethodArguments(node, 'none') !== undefined
+function isNoneCall(sourceCode: SourceCode, node: ESTree.Expression): boolean {
+  return optionMethodArguments(sourceCode, node, 'none') !== undefined
 }
 
 function replacement(operator: string, absentSide: ESTree.Node) {
@@ -93,7 +91,7 @@ function replacement(operator: string, absentSide: ESTree.Node) {
     : { absent: 'null', constructor: 'fromNullOr' }
 }
 
-function nullableReplacement(node: ESTree.ConditionalExpression) {
+function nullableReplacement(sourceCode: SourceCode, node: ESTree.ConditionalExpression) {
   const { test, consequent, alternate } = node
 
   if (test.type !== 'BinaryExpression' || (!isNullish(test.left) && !isNullish(test.right))) {
@@ -105,12 +103,12 @@ function nullableReplacement(node: ESTree.ConditionalExpression) {
     : [test.right, test.left]
   const someWhenPresent =
     PRESENCE_OPERATORS.has(test.operator) &&
-    wrapsSubject(consequent, subject) &&
-    isNoneCall(alternate)
+    wrapsSubject(sourceCode, consequent, subject) &&
+    isNoneCall(sourceCode, alternate)
   const noneWhenAbsent =
     ABSENCE_OPERATORS.has(test.operator) &&
-    isNoneCall(consequent) &&
-    wrapsSubject(alternate, subject)
+    isNoneCall(sourceCode, consequent) &&
+    wrapsSubject(sourceCode, alternate, subject)
 
   return someWhenPresent || noneWhenAbsent ? replacement(test.operator, absentSide) : undefined
 }
@@ -127,7 +125,7 @@ export default defineRule({
   create(context) {
     return {
       ConditionalExpression(node) {
-        const data = nullableReplacement(node)
+        const data = nullableReplacement(context.sourceCode, node)
 
         if (data !== undefined) {
           context.report({ node, messageId: 'preferOptionFromNullable', data })

@@ -16,7 +16,7 @@ const SECTION_NAMES = [
 const STATIC_RANKS = new Map([
   ['ImportDeclaration', 0],
   ['TSInterfaceDeclaration', 1],
-  ['TSEnumDeclaration', 1],
+  ['TSEnumDeclaration', 2],
   ['FunctionDeclaration', 3],
   ['TSDeclareFunction', 3],
   ['TSModuleDeclaration', 5],

@@ -51,3 +51,40 @@ export default function (input: string | number): string | number {
 
 @sealed
 export class Decorated {}
+
+namespace Tools {
+  const inside = 1
+
+  if (inside) {
+    compute(inside)
+  }
+}
+
+declare global {
+  const ambient: number
+
+  function helper(): void
+}
+
+exports.value = 1
+exports.other = 2
+
+exports.handler = async (event: string) => {
+  return event
+}
+
+outer: for (const item of [first, second]) {
+  continue outer
+}
+
+const afterLabel = 1
+
+import fs = require('fs')
+
+const afterImportEquals = 1
+
+const Shape = class {
+  area() {}
+}
+
+const afterClassExpression = 1

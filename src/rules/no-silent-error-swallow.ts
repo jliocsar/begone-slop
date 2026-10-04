@@ -1,7 +1,8 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { effectModuleMemberName } from '../shared/effect-module-import.ts'
 
-const EFFECT = 'Effect'
+const EFFECT_MODULE = 'Effect'
 
 const CATCH_METHODS = new Set([
   'catch',
@@ -23,20 +24,17 @@ const VOID_MEMBERS = new Set(['void', 'unit'])
 const MESSAGE =
   'Do not silently swallow an Effect error by returning a void effect from a catch handler. Recover meaningfully, transform the error, or let it propagate.'
 
-function isEffectMember(node: ESTree.Node, names: ReadonlySet<string>): boolean {
-  if (node.type !== 'MemberExpression') {
-    return false
-  }
+function isEffectMember(
+  sourceCode: SourceCode,
+  node: ESTree.Node,
+  names: ReadonlySet<string>,
+): boolean {
+  const memberName = effectModuleMemberName(sourceCode, node, EFFECT_MODULE)
 
-  return (
-    node.object.type === 'Identifier' &&
-    node.object.name === EFFECT &&
-    node.property.type === 'Identifier' &&
-    names.has(node.property.name)
-  )
+  return memberName !== undefined && names.has(memberName)
 }
 
-function returnsOnlyVoid(node: ESTree.Node): boolean {
+function returnsOnlyVoid(sourceCode: SourceCode, node: ESTree.Node): boolean {
   if (node.type !== 'ArrowFunctionExpression' && node.type !== 'FunctionExpression') {
     return false
   }
@@ -47,7 +45,7 @@ function returnsOnlyVoid(node: ESTree.Node): boolean {
     return false
   }
 
-  if (isEffectMember(body, VOID_MEMBERS)) {
+  if (isEffectMember(sourceCode, body, VOID_MEMBERS)) {
     return true
   }
 
@@ -65,12 +63,12 @@ function returnsOnlyVoid(node: ESTree.Node): boolean {
     statement.type === 'ReturnStatement' &&
     statement.argument !== null &&
     statement.argument !== undefined &&
-    isEffectMember(statement.argument, VOID_MEMBERS)
+    isEffectMember(sourceCode, statement.argument, VOID_MEMBERS)
   )
 }
 
-function silentHandlers(argument: ESTree.Node): readonly ESTree.Node[] {
-  const direct: readonly ESTree.Node[] = returnsOnlyVoid(argument) ? [argument] : []
+function silentHandlers(sourceCode: SourceCode, argument: ESTree.Node): readonly ESTree.Node[] {
+  const direct: readonly ESTree.Node[] = returnsOnlyVoid(sourceCode, argument) ? [argument] : []
 
   if (argument.type !== 'ObjectExpression') {
     return direct
@@ -79,7 +77,7 @@ function silentHandlers(argument: ESTree.Node): readonly ESTree.Node[] {
   const nested: ESTree.Node[] = []
 
   for (const property of argument.properties) {
-    if (property.type === 'Property' && returnsOnlyVoid(property.value)) {
+    if (property.type === 'Property' && returnsOnlyVoid(sourceCode, property.value)) {
       nested.push(property.value)
     }
   }
@@ -98,13 +96,17 @@ export default defineRule({
   create(context) {
     return {
       CallExpression(node) {
-        if (!isEffectMember(node.callee, CATCH_METHODS)) {
+        const { sourceCode } = context
+
+        if (!isEffectMember(sourceCode, node.callee, CATCH_METHODS)) {
           return
         }
 
-        node.arguments.flatMap(silentHandlers).forEach((handler) => {
-          context.report({ node: handler, messageId: 'silentErrorSwallow' })
-        })
+        node.arguments
+          .flatMap((argument) => silentHandlers(sourceCode, argument))
+          .forEach((handler) => {
+            context.report({ node: handler, messageId: 'silentErrorSwallow' })
+          })
       },
     }
   },

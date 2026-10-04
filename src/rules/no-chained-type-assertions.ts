@@ -2,16 +2,37 @@ import type { ESTree } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
 import { isConstAssertion, isTypeAssertion, type TypeAssertion } from '../shared/type-assertion.ts'
 
+type ChainWrapper =
+  | ESTree.TSNonNullExpression
+  | ESTree.TSSatisfiesExpression
+  | ESTree.ParenthesizedExpression
+
 const MESSAGE =
   'This assertion chain discards type evidence. Keep the original precise type, or parse untrusted input at its boundary before narrowing it.'
 
-function isOutermostAssertionInChain(node: TypeAssertion): boolean {
+function isChainWrapper(node: ESTree.Node): node is ChainWrapper {
+  return (
+    node.type === 'TSNonNullExpression' ||
+    node.type === 'TSSatisfiesExpression' ||
+    node.type === 'ParenthesizedExpression'
+  )
+}
+
+function isOutermostAssertionInChain(node: TypeAssertion | ChainWrapper): boolean {
   const { parent } = node
+
+  if (isChainWrapper(parent) && parent.expression === node) {
+    return isOutermostAssertionInChain(parent)
+  }
 
   return !isTypeAssertion(parent) || parent.expression !== node
 }
 
 function assertionChain(expression: ESTree.Expression): readonly TypeAssertion[] {
+  if (isChainWrapper(expression)) {
+    return assertionChain(expression.expression)
+  }
+
   return isTypeAssertion(expression) ? [expression, ...assertionChain(expression.expression)] : []
 }
 

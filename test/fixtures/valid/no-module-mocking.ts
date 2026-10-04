@@ -33,3 +33,9 @@ class DerivedFromABase extends Base {
     this.module()
   }
 }
+import * as helpers from './helpers'
+helpers.vi.mock('./user-store')
+import * as vitestNamespace from 'vitest'
+vitestNamespace.vi.fn()
+vitestNamespace.expect.mock('./user-store')
+vitestNamespace[methodFromAVariable].mock('./user-store')

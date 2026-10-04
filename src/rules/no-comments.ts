@@ -5,7 +5,7 @@ import { isSafetyComment } from '../shared/type-assertion.ts'
 const ALLOWED_DIRECTIVE =
   /^[\s*]*(?:\/\s*<reference|@ts-|c8 |eslint-|istanbul |v8 |oxlint-|[#@]__(?:PURE|NO_SIDE_EFFECTS)__|@jsx(?:ImportSource|Frag|Runtime)?\s|@(?:vitest|jest)-environment\s|prettier-ignore|biome-ignore|[#@] sourceMappingURL=)/u
 
-const DECLARATION_FILE_SUFFIX = '.d.ts'
+const DECLARATION_FILE_SUFFIX = /\.d\.[cm]?ts$/u
 
 const GENERATED_FILE_MARKER = '.generated.'
 
@@ -21,7 +21,7 @@ function isExempt(comment: Comment): boolean {
 }
 
 function isExemptFile(filename: string): boolean {
-  return filename.endsWith(DECLARATION_FILE_SUFFIX) || filename.includes(GENERATED_FILE_MARKER)
+  return DECLARATION_FILE_SUFFIX.test(filename) || filename.includes(GENERATED_FILE_MARKER)
 }
 
 export default defineRule({

@@ -25,3 +25,7 @@ const chained = { start: startCommand } as Record<string, Command> as object
 declare function unrelated(): void
 function afterDeclare(): unknown { return {} }
 abstract class Overloads { abstract read(key: string): unknown; write(key?: string): unknown { return { key } } }
+interface DictIface { readonly [key: string]: Command }
+const viaInterface: DictIface = { start: startCommand }
+const literalKeys: { [Key in 'start' | 'stop']?: Command } = {}
+function localAlias() { type Loose = unknown; const loose: Loose = 1; return loose }

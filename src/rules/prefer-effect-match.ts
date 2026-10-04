@@ -5,6 +5,8 @@ const EQUALITY_OPERATORS = new Set(['==', '===', '!=', '!=='])
 
 const MINIMUM_LITERAL_CHECKS = 2
 
+const STABLE_LEAVES = new Set(['Identifier', 'Literal', 'ThisExpression'])
+
 const MESSAGE =
   'A ternary chain over one subject is a match written by hand, with nothing checking the cases are complete. Express it with Match from Effect.'
 
@@ -26,6 +28,30 @@ function comparedSide(test: ESTree.Node): ESTree.Node | undefined {
   return isLiteralSide(test.right) ? test.left : undefined
 }
 
+function readsOneValue(node: ESTree.Node): boolean {
+  if (STABLE_LEAVES.has(node.type)) {
+    return true
+  }
+
+  if (node.type === 'MemberExpression') {
+    return readsOneValue(node.object) && (!node.computed || readsOneValue(node.property))
+  }
+
+  if (node.type === 'ChainExpression' || node.type === 'TSNonNullExpression') {
+    return readsOneValue(node.expression)
+  }
+
+  if (node.type === 'UnaryExpression') {
+    return node.operator !== 'delete' && readsOneValue(node.argument)
+  }
+
+  if (node.type === 'BinaryExpression' || node.type === 'LogicalExpression') {
+    return readsOneValue(node.left) && readsOneValue(node.right)
+  }
+
+  return node.type === 'TemplateLiteral' && node.expressions.every(readsOneValue)
+}
+
 function chainTests(node: ESTree.ConditionalExpression): readonly ESTree.Node[] {
   const { alternate } = node
 
@@ -40,7 +66,7 @@ function comparesOneSubject(sourceCode: SourceCode, tests: readonly ESTree.Node[
   for (const test of tests) {
     const compared = comparedSide(test)
 
-    if (compared === undefined) {
+    if (compared === undefined || !readsOneValue(compared)) {
       return false
     }
 

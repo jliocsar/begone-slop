@@ -16,3 +16,11 @@ function assertsInsideABlock() {
   expect(value).toBe(1)
   expect(value).not.toBe(2)
 }
+
+const parsed = run()
+
+// @ts-expect-error invalid input on purpose
+expect(parse(parsed)).toBe(1)
+
+// oxlint-disable-next-line no-console
+console.log(parsed)

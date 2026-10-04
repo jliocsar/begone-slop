@@ -3,6 +3,7 @@ import { defineRule } from '@oxlint/plugins'
 import {
   adjacentPairs,
   blankLinesBetween,
+  fenceAnchor,
   lineBreakOf,
   lineStartRange,
   statementsOf,
@@ -67,7 +68,9 @@ function fenceGap(
   previous: ESTree.Node,
   current: ESTree.Node,
 ): Diagnostic | undefined {
-  if (blankLinesBetween(previous, current) !== 0) {
+  const anchor = fenceAnchor(sourceCode, previous, current)
+
+  if (blankLinesBetween(previous, anchor) !== 0) {
     return undefined
   }
 
@@ -75,7 +78,7 @@ function fenceGap(
     node: current,
     messageId: 'fenceExpectBlock',
     fix: (fixer) =>
-      fixer.insertTextBeforeRange(lineStartRange(current), lineBreakOf(sourceCode.text)),
+      fixer.insertTextBeforeRange(lineStartRange(anchor), lineBreakOf(sourceCode.text)),
   }
 }
 

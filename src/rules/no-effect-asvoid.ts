@@ -1,6 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
+import { effectModuleMemberName } from '../shared/effect-module-import.ts'
 
-const OBJECT_NAME = 'Effect'
+const EFFECT_MODULE = 'Effect'
 
 const MEMBER_NAME = 'asVoid'
 
@@ -12,13 +13,7 @@ export default defineRule({
   create(context) {
     return {
       MemberExpression(node) {
-        if (
-          !node.computed &&
-          node.object.type === 'Identifier' &&
-          node.object.name === OBJECT_NAME &&
-          node.property.type === 'Identifier' &&
-          node.property.name === MEMBER_NAME
-        ) {
+        if (effectModuleMemberName(context.sourceCode, node, EFFECT_MODULE) === MEMBER_NAME) {
           context.report({ node, message: MESSAGE })
         }
       },

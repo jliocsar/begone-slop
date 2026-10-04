@@ -1,3 +1,6 @@
+import { Effect } from 'effect'
+import * as Stream from 'effect/Stream'
+
 // Recovery combinators outside the watched set, whatever they return.
 Effect.catchAll(program, () => Effect.void)
 Effect.catchAllCause(program, () => Effect.void)
@@ -40,3 +43,8 @@ Effect.catchCause(program, (cause) => Effect.logError(cause))
 Effect.catchIf(program, isTimeout, (error) => Effect.fail(error))
 Effect.catchCauseFilter(Cause.findFail, (failure) => Effect.succeed(failure))
 Effect.catchNoSuchElement(program)
+
+// A catch or a void from a receiver that is not an import of Effect.
+E.catch(program, () => E.void)
+Effect.catch(program, () => Stream.void)
+const shadowed = (Effect: Recovery) => Effect.catch(program, () => Effect.void)
