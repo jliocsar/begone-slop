@@ -6,9 +6,7 @@ const ALLOWED_DIRECTIVE =
   /^[\s*]*(?:\/\s*<reference|@ts-|c8 |eslint-|istanbul |v8 |oxlint-|[#@]__(?:PURE|NO_SIDE_EFFECTS)__|@jsx(?:ImportSource|Frag|Runtime)?\s|@(?:vitest|jest)-environment\s|prettier-ignore|biome-ignore|[#@] sourceMappingURL=)/u
 
 const DECLARATION_FILE_SUFFIX = /\.d\.[cm]?ts$/u
-
 const GENERATED_FILE_MARKER = '.generated.'
-
 const SHEBANG = 'Shebang'
 
 const MESSAGE =

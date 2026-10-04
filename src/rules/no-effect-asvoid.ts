@@ -2,7 +2,6 @@ import { defineRule } from '@oxlint/plugins'
 import { effectModuleMemberName } from '../shared/effect-module-import.ts'
 
 const EFFECT_MODULE = 'Effect'
-
 const MEMBER_NAME = 'asVoid'
 
 const MESSAGE =

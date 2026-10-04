@@ -1,13 +1,11 @@
 import type { Definition, ESTree, SourceCode } from '@oxlint/plugins'
 import { findVariable } from './binding-scope.ts'
 
-export const EFFECT_ARRAY_BINDING = 'Array'
-
 const EFFECT_PACKAGE = 'effect'
-
 const EFFECT_ARRAY_MODULE = 'effect/Array'
-
 const TYPE_ONLY = 'type'
+
+export const EFFECT_ARRAY_BINDING = 'Array'
 
 function bindsEffectArray(definition: Definition): boolean {
   const declaration = definition.parent

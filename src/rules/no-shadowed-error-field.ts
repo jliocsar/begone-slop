@@ -3,13 +3,9 @@ import { defineRule } from '@oxlint/plugins'
 import { stringLiteralValue } from '../shared/literal.ts'
 
 const SHADOWED_PROPERTIES = new Set(['name', 'stack'])
-
 const ERROR_CLASS_FACTORIES = new Set(['TaggedErrorClass', 'ErrorClass'])
-
 const STRUCT_CONSTRUCTOR = 'Struct'
-
 const DATA_ERROR_CONSTRUCTOR = 'Error'
-
 const DATA_TAGGED_ERROR_FACTORY = 'TaggedError'
 
 const MESSAGE =

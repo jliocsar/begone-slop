@@ -1,0 +1,9 @@
+const PRIVATE_FIRST = 1
+
+export const PUBLIC_FIRST = PRIVATE_FIRST
+const PRIVATE_AFTER_EXPORT = 2
+
+export const PUBLIC_SECOND = 3
+
+export const PUBLIC_THIRD = 4
+const PRIVATE_LATE = PRIVATE_AFTER_EXPORT

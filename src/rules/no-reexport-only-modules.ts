@@ -7,7 +7,6 @@ type ReexportOptions = {
 }
 
 const DEFAULT_ALLOWED_FILENAMES = ['loading.tsx', 'not-found.tsx']
-
 const DEFAULT_ROUTE_DIRECTORY_NAMES = ['app']
 
 const MESSAGE =

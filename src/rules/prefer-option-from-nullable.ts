@@ -3,13 +3,9 @@ import { defineRule } from '@oxlint/plugins'
 import { effectModuleMemberName } from '../shared/effect-module-import.ts'
 
 const OPTION_MODULE = 'Option'
-
 const UNDEFINED = 'undefined'
-
 const PRESENCE_OPERATORS = new Set(['!==', '!='])
-
 const ABSENCE_OPERATORS = new Set(['===', '=='])
-
 const LOOSE_OPERATORS = new Set(['!=', '=='])
 
 const MESSAGE =

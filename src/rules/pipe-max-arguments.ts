@@ -2,7 +2,6 @@ import type { ESTree } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
 
 const PIPE_PROPERTY = 'pipe'
-
 const MAXIMUM_PIPE_ARGUMENTS = 20
 
 const MESSAGE =

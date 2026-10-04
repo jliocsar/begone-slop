@@ -3,11 +3,9 @@ import preset from '../preset.json' with { type: 'json' }
 import plugin from '../src/index.ts'
 
 const OXLINT = ['bunx', '--bun', 'oxlint']
-
 const FIXTURES = `${import.meta.dir}/fixtures`
 const VALID_FIXTURES = `${import.meta.dir}/fixtures/valid`
 const CONFIGS = `${import.meta.dir}/tmp`
-
 const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
 const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
@@ -16,7 +14,10 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
   { rule: 'expect-padding', lines: [2, 4, 8, 10] },
   {
     rule: 'padding-line-between-statements',
-    lines: [2, 5, 9, 12, 13, 14, 21, 25, 28, 36, 40, 47, 51, 54, 59, 62, 67, 71],
+    lines: [
+      2, 5, 9, 12, 13, 14, 21, 25, 28, 36, 40, 47, 51, 54, 59, 62, 67, 71, 76, 77, 80, 81, 82, 87,
+      88,
+    ],
   },
   {
     rule: 'padding-line-between-statements',
@@ -24,6 +25,11 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
     lines: [2, 5],
   },
   { rule: 'statement-order', lines: [5] },
+  {
+    rule: 'statement-order',
+    fixture: 'statement-order.exported-constants.ts',
+    lines: [4, 9],
+  },
   { rule: 'no-switch', lines: [1, 2] },
   { rule: 'no-try-catch', lines: [1, 2] },
   { rule: 'no-in-operator', lines: [1, 2] },

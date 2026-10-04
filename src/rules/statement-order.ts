@@ -1,5 +1,9 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import {
+  exportedScreamingConst,
+  isScreamingConstDeclaration,
+} from '../shared/screaming-constant.ts'
 
 type TopLevelNode = ESTree.Declaration | ESTree.Directive | ESTree.Statement
 
@@ -59,16 +63,59 @@ function rankOf(
   return STATIC_RANKS.get(node.type)
 }
 
+function readsAnyOf(
+  sourceCode: SourceCode,
+  statement: ESTree.Node,
+  declarations: readonly ESTree.VariableDeclaration[],
+): boolean {
+  const [statementStart, statementEnd] = statement.range
+
+  return declarations
+    .flatMap((declaration) => sourceCode.getDeclaredVariables(declaration))
+    .some((variable) =>
+      variable.references.some(
+        ({ identifier }) =>
+          identifier.range[0] >= statementStart && identifier.range[1] <= statementEnd,
+      ),
+    )
+}
+
+function privateConstantsAfterExports(
+  sourceCode: SourceCode,
+  body: readonly TopLevelNode[],
+): readonly ESTree.Node[] {
+  const misplaced: ESTree.Node[] = []
+  let exportedInGroup: ESTree.VariableDeclaration[] = []
+
+  for (const statement of body) {
+    const exported = exportedScreamingConst(statement)
+
+    if (exported !== undefined) {
+      exportedInGroup.push(exported)
+    } else if (isScreamingConstDeclaration(statement)) {
+      if (exportedInGroup.length > 0 && !readsAnyOf(sourceCode, statement, exportedInGroup)) {
+        misplaced.push(statement)
+      }
+    } else {
+      exportedInGroup = []
+    }
+  }
+
+  return misplaced
+}
+
 export default defineRule({
   meta: {
     type: 'layout',
     docs: {
       description:
-        'require top-level order: imports > type-defs > constants > functions > variables > modules > exports',
+        'require top-level order: imports > type-defs > constants > functions > variables > modules > exports, with private SCREAMING_CASE constants above exported ones',
     },
     messages: {
       outOfOrder:
         '"{{section}}" section appears after "{{after}}". Move it up to keep the fixed top-level order.',
+      privateConstantAfterExport:
+        'Module-private constant after an exported one. Move it above the exported constants.',
     },
   },
   create(context) {
@@ -101,6 +148,10 @@ export default defineRule({
           }
 
           highestSeen = Math.max(highestSeen, rank)
+        }
+
+        for (const statement of privateConstantsAfterExports(context.sourceCode, program.body)) {
+          context.report({ node: statement, messageId: 'privateConstantAfterExport' })
         }
       },
     }

@@ -1,5 +1,6 @@
-import type { Diagnostic, ESTree, Options, SourceCode } from '@oxlint/plugins'
+import type { Diagnostic, ESTree, Options, Range, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import { isBlockLike } from '../shared/block-like.ts'
 import {
   adjacentPairs,
   blankLinesBetween,
@@ -8,6 +9,10 @@ import {
   lineStartRange,
   statementsOf,
 } from '../shared/source-position.ts'
+import {
+  exportedScreamingConst,
+  isScreamingConstDeclaration,
+} from '../shared/screaming-constant.ts'
 
 interface SpecOption {
   readonly blankLine: BlankLine
@@ -30,11 +35,13 @@ const STATEMENT_TYPES = [
   'import',
   'singleline-const',
   'singleline-let',
+  'screaming-const',
+  'exported-screaming-const',
 ] as const
 
 type StatementType = (typeof STATEMENT_TYPES)[number]
 
-const BLANK_LINES = ['always', 'any'] as const
+const BLANK_LINES = ['always', 'never', 'any'] as const
 
 type BlankLine = (typeof BLANK_LINES)[number]
 
@@ -57,17 +64,7 @@ const SPECS_SCHEMA = {
   },
 }
 
-const BLOCK_OWNING_STATEMENTS = new Set([
-  'BlockStatement',
-  'IfStatement',
-  'ForStatement',
-  'ForInStatement',
-  'ForOfStatement',
-  'WhileStatement',
-  'DoWhileStatement',
-  'SwitchStatement',
-  'TryStatement',
-])
+const ONLY_WHITESPACE = /^\s*$/u
 
 const STATEMENT_MATCHERS = {
   '*': () => true,
@@ -78,7 +75,10 @@ const STATEMENT_MATCHERS = {
   import: (node) => node.type === 'ImportDeclaration' || node.type === 'TSImportEqualsDeclaration',
   'singleline-const': (node) => isSingleLineDeclaration(node, 'const'),
   'singleline-let': (node) => isSingleLineDeclaration(node, 'let'),
-} satisfies Record<StatementType, (node: ESTree.Node) => boolean>
+  'screaming-const': (_declaration, statement) => isScreamingConstDeclaration(statement),
+  'exported-screaming-const': (_declaration, statement) =>
+    exportedScreamingConst(statement) !== undefined,
+} satisfies Record<StatementType, (declaration: ESTree.Node, statement: ESTree.Node) => boolean>
 
 function configuredSpecs(options: Readonly<Options>): readonly Spec[] {
   // SAFETY: oxlint validates configured options against meta.schema before create runs
@@ -89,61 +89,6 @@ function configuredSpecs(options: Readonly<Options>): readonly Spec[] {
     prev: [prev].flat(),
     next: [next].flat(),
   }))
-}
-
-function isBlockBodiedFunction(node: ESTree.Node | null | undefined): boolean {
-  if (node === null || node === undefined) {
-    return false
-  }
-
-  const isFunction = node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression'
-
-  return isFunction && node.body?.type === 'BlockStatement'
-}
-
-function isBlockBodiedValue(node: ESTree.Node | null | undefined): boolean {
-  return node?.type === 'ClassExpression' || isBlockBodiedFunction(node)
-}
-
-function isAssignedBlock(node: ESTree.Node): boolean {
-  if (node.type !== 'ExpressionStatement') {
-    return false
-  }
-
-  const { expression } = node
-
-  return expression.type === 'AssignmentExpression' && isBlockBodiedValue(expression.right)
-}
-
-function isImmediatelyInvokedBlock(node: ESTree.Node): boolean {
-  if (node.type !== 'ExpressionStatement') {
-    return false
-  }
-
-  const call =
-    node.expression.type === 'AwaitExpression' ? node.expression.argument : node.expression
-
-  return call.type === 'CallExpression' && isBlockBodiedFunction(call.callee)
-}
-
-function isBlockLike(node: ESTree.Node): boolean {
-  if (BLOCK_OWNING_STATEMENTS.has(node.type)) {
-    return true
-  }
-
-  if (node.type === 'LabeledStatement') {
-    return isBlockLike(node.body)
-  }
-
-  if (isImmediatelyInvokedBlock(node) || isAssignedBlock(node) || isBlockBodiedValue(node)) {
-    return true
-  }
-
-  if (node.type === 'VariableDeclaration') {
-    return node.declarations.some((declarator) => isBlockBodiedValue(declarator.init))
-  }
-
-  return false
 }
 
 function isSingleLineDeclaration(node: ESTree.Node, kind: 'const' | 'let'): boolean {
@@ -162,7 +107,9 @@ function exportedDeclaration(node: ESTree.Node): ESTree.Node {
 function matchesAny(node: ESTree.Node, statementTypes: readonly StatementType[]): boolean {
   const declaration = exportedDeclaration(node)
 
-  return statementTypes.some((statementType) => STATEMENT_MATCHERS[statementType](declaration))
+  return statementTypes.some((statementType) =>
+    STATEMENT_MATCHERS[statementType](declaration, node),
+  )
 }
 
 function continuesOverloads(previous: ESTree.Node, current: ESTree.Node): boolean {
@@ -180,20 +127,17 @@ function continuesOverloads(previous: ESTree.Node, current: ESTree.Node): boolea
   return following.id?.name === signature.id?.name
 }
 
-function requiresBlankLine(
+function governingBlankLine(
   specs: readonly Spec[],
   previous: ESTree.Node,
   current: ESTree.Node,
-): boolean {
+): BlankLine | undefined {
   if (continuesOverloads(previous, current)) {
-    return false
+    return undefined
   }
 
-  const governingSpec = specs.findLast(
-    (spec) => matchesAny(previous, spec.prev) && matchesAny(current, spec.next),
-  )
-
-  return governingSpec?.blankLine === 'always'
+  return specs.findLast((spec) => matchesAny(previous, spec.prev) && matchesAny(current, spec.next))
+    ?.blankLine
 }
 
 function leadingNode(node: ESTree.Node): ESTree.Node {
@@ -208,14 +152,9 @@ function leadingNode(node: ESTree.Node): ESTree.Node {
 
 function missingBlankLine(
   sourceCode: SourceCode,
-  specs: readonly Spec[],
   previous: ESTree.Node,
   current: ESTree.Node,
 ): Diagnostic | undefined {
-  if (!requiresBlankLine(specs, previous, current)) {
-    return undefined
-  }
-
   const anchor = fenceAnchor(sourceCode, previous, leadingNode(current))
 
   if (blankLinesBetween(previous, anchor) !== 0) {
@@ -230,12 +169,51 @@ function missingBlankLine(
   }
 }
 
+function unexpectedBlankLine(
+  sourceCode: SourceCode,
+  previous: ESTree.Node,
+  current: ESTree.Node,
+): Diagnostic | undefined {
+  const leading = leadingNode(current)
+  const gapRange: Range = [previous.range[1], lineStartRange(leading)[0]]
+  const gapIsOnlyBlankLines =
+    blankLinesBetween(previous, leading) > 0 &&
+    ONLY_WHITESPACE.test(sourceCode.text.slice(...gapRange))
+
+  return gapIsOnlyBlankLines
+    ? {
+        node: current,
+        messageId: 'unexpectedBlankLine',
+        fix: (fixer) => fixer.replaceTextRange(gapRange, lineBreakOf(sourceCode.text)),
+      }
+    : undefined
+}
+
+function paddingDiagnostic(
+  sourceCode: SourceCode,
+  specs: readonly Spec[],
+  previous: ESTree.Node,
+  current: ESTree.Node,
+): Diagnostic | undefined {
+  const blankLine = governingBlankLine(specs, previous, current)
+  const check = blankLine === 'always' ? missingBlankLine : unexpectedBlankLine
+
+  return blankLine === 'any' || blankLine === undefined
+    ? undefined
+    : check(sourceCode, previous, current)
+}
+
 export default defineRule({
   meta: {
     type: 'layout',
-    docs: { description: 'require blank lines between statements, per a declarative spec' },
+    docs: {
+      description: 'require or forbid blank lines between statements, per a declarative spec',
+    },
     fixable: 'whitespace',
-    messages: { expectedBlankLine: 'Expected a blank line before this statement.' },
+    messages: {
+      expectedBlankLine: 'Expected a blank line before this statement.',
+      unexpectedBlankLine: 'Unexpected blank line before this statement.',
+    },
     schema: [SPECS_SCHEMA],
   },
   create(context) {
@@ -243,7 +221,7 @@ export default defineRule({
 
     const checkBody = (node: ESTree.Node) => {
       for (const [previous, current] of adjacentPairs(statementsOf(node))) {
-        const diagnostic = missingBlankLine(context.sourceCode, specs, previous, current)
+        const diagnostic = paddingDiagnostic(context.sourceCode, specs, previous, current)
 
         if (diagnostic !== undefined) {
           context.report(diagnostic)
