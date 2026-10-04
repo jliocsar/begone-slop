@@ -31,3 +31,7 @@ export function lineStartRange(node: Span): Range {
 
   return [lineStart, lineStart]
 }
+
+export function lineBreakOf(text: string): string {
+  return /\r?\n/u.exec(text)?.[0] ?? '\n'
+}

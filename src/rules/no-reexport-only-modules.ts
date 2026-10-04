@@ -35,6 +35,42 @@ function isSourcedReexport(statement: ESTree.Directive | ESTree.Statement): bool
   return statement.type === 'ExportNamedDeclaration' && statement.source !== null
 }
 
+function isImportWithBindings(statement: ESTree.Directive | ESTree.Statement): boolean {
+  return statement.type === 'ImportDeclaration' && statement.specifiers.length > 0
+}
+
+function importedNames(
+  statements: readonly (ESTree.Directive | ESTree.Statement)[],
+): ReadonlySet<string> {
+  return new Set(
+    statements.flatMap((statement) =>
+      statement.type === 'ImportDeclaration'
+        ? statement.specifiers.map((specifier) => specifier.local.name)
+        : [],
+    ),
+  )
+}
+
+function isImportedReexport(
+  statement: ESTree.Directive | ESTree.Statement,
+  imported: ReadonlySet<string>,
+): boolean {
+  if (statement.type === 'ExportDefaultDeclaration') {
+    return statement.declaration.type === 'Identifier' && imported.has(statement.declaration.name)
+  }
+
+  if (statement.type !== 'ExportNamedDeclaration' || statement.declaration !== null) {
+    return false
+  }
+
+  return (
+    statement.specifiers.length > 0 &&
+    statement.specifiers.every(
+      (specifier) => specifier.local.type === 'Identifier' && imported.has(specifier.local.name),
+    )
+  )
+}
+
 function isExemptRouteFile(filename: string, options: ReexportOptions): boolean {
   const segments = filename.replaceAll('\\', '/').split('/')
   const basename = segments.at(-1)
@@ -48,8 +84,15 @@ function isExemptRouteFile(filename: string, options: ReexportOptions): boolean 
 
 function isReexportOnly(program: ESTree.Program): boolean {
   const statements = program.body.filter((statement) => !isDirective(statement))
+  const imported = importedNames(statements)
+  const exports = statements.filter((statement) => !isImportWithBindings(statement))
 
-  return statements.length > 0 && statements.every(isSourcedReexport)
+  return (
+    exports.length > 0 &&
+    exports.every(
+      (statement) => isSourcedReexport(statement) || isImportedReexport(statement, imported),
+    )
+  )
 }
 
 export default defineRule({

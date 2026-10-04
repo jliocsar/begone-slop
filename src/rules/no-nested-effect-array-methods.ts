@@ -1,34 +1,37 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
-import { EFFECT_ARRAY_BINDING, importsEffectArrayUnaliased } from '../shared/effect-array-import.ts'
+import { isEffectArrayReference } from '../shared/effect-array-import.ts'
 
 const MESSAGE =
   'Nesting one Effect Array call inside another loses the inferred element type at the boundary. Chain the calls through pipe so each step keeps its inference.'
 
-function isEffectArrayMethodCall(node: ESTree.Node): node is ESTree.CallExpression {
+function isEffectArrayMethodCall(
+  sourceCode: SourceCode,
+  node: ESTree.Node,
+): node is ESTree.CallExpression {
   if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') {
     return false
   }
 
   const { object, property } = node.callee
 
-  return (
-    object.type === 'Identifier' &&
-    object.name === EFFECT_ARRAY_BINDING &&
-    property.type === 'Identifier'
-  )
+  return property.type === 'Identifier' && isEffectArrayReference(sourceCode, object)
 }
 
-function enclosingArrayCalls(descendant: ESTree.Node): readonly ESTree.CallExpression[] {
+function enclosingArrayCalls(
+  sourceCode: SourceCode,
+  descendant: ESTree.Node,
+): readonly ESTree.CallExpression[] {
   const { parent } = descendant
 
   if (parent === null) {
     return []
   }
 
-  const outerCalls = enclosingArrayCalls(parent)
+  const outerCalls = enclosingArrayCalls(sourceCode, parent)
   const nestsTheDescendant =
-    isEffectArrayMethodCall(parent) && parent.arguments.some((argument) => argument === descendant)
+    isEffectArrayMethodCall(sourceCode, parent) &&
+    parent.arguments.some((argument) => argument === descendant)
 
   return nestsTheDescendant ? [parent, ...outerCalls] : outerCalls
 }
@@ -40,19 +43,16 @@ export default defineRule({
     messages: { nestedEffectArrayMethods: MESSAGE },
   },
   create(context) {
-    let shadowsTheGlobal = false
+    const { sourceCode } = context
     const reportedCalls = new WeakSet<ESTree.CallExpression>()
 
     return {
-      Program(node) {
-        shadowsTheGlobal = importsEffectArrayUnaliased(node)
-      },
       CallExpression(node) {
-        if (!shadowsTheGlobal || !isEffectArrayMethodCall(node)) {
+        if (!isEffectArrayMethodCall(sourceCode, node)) {
           return
         }
 
-        for (const outerCall of enclosingArrayCalls(node)) {
+        for (const outerCall of enclosingArrayCalls(sourceCode, node)) {
           if (!reportedCalls.has(outerCall)) {
             reportedCalls.add(outerCall)
             context.report({ node: outerCall, messageId: 'nestedEffectArrayMethods' })

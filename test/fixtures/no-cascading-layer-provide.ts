@@ -17,3 +17,11 @@ const chainedPipeReportsEachCall = base.pipe(Layer.provide(database), Layer.prov
 function nestedScopeStillResolves() {
   return base.pipe(Layer.provide(database), Layer.provide(config))
 }
+const standaloneBarrelPipe = pipe(base, Layer.provide(database), Layer.provide(config))
+const standaloneFunctionPipe = functionPipe(base, EffectLayer.provide(database), Layer.provideMerge(config))
+const renamedNamespace = base.pipe(L.provide(database), L.provide(config))
+const renamedNamespaceInStandalonePipe = pipe(base, L.provide(database), EffectLayer.provide(config))
+
+import { pipe } from 'effect'
+import { pipe as functionPipe } from 'effect/Function'
+import * as L from 'effect/Layer'

@@ -42,3 +42,12 @@ function local(input: number): number
 function local(input: string | number): string | number {
   return input
 }
+
+export default function (input: string): string
+export default function (input: number): number
+export default function (input: string | number): string | number {
+  return input
+}
+
+@sealed
+export class Decorated {}

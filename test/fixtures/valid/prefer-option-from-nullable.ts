@@ -1,11 +1,10 @@
 const alreadyIdiomatic = Option.fromNullable(value)
 
-// The inverted form is not flagged: the arms are the other way round.
-const inverted = value === null ? Option.none() : Option.some(value)
-const invertedLoose = value == null ? Option.none() : Option.some(value)
-
-// `undefined` is a different test from `null`.
-const againstUndefined = value !== undefined ? Option.some(value) : Option.none()
+// The `some` arm must wrap the tested value itself, not something derived from it.
+const derivedValue = value !== null ? Option.some(decode(value)) : Option.none()
+const derivedMember = user != null ? Option.some(user.name) : Option.none()
+const otherValue = value !== null ? Option.some(other) : Option.none()
+const calledTwice = next() !== null ? Option.some(next()) : Option.none()
 const againstZero = value !== 0 ? Option.some(value) : Option.none()
 
 // `Option.none` without a call is a value, not the constructor call.
@@ -16,7 +15,7 @@ const bareSome = value !== null ? Option.some : Option.none()
 const aliased = value !== null ? O.some(value) : O.none()
 const namespaced = value !== null ? Effect.Option.some(value) : Effect.Option.none()
 
-// The arms must be `some` then `none`, from `Option`, and nothing else.
+// The arms must follow the test's direction, come from `Option`, and be nothing else.
 const swappedArms = value !== null ? Option.none() : Option.some(value)
 const bothSome = value !== null ? Option.some(value) : Option.some(fallback)
 const otherMethod = value !== null ? Option.some(value) : Option.getOrNull(other)

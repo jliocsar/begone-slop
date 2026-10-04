@@ -1,5 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
-import { typeReferenceName } from './type-environment.ts'
+import { type TypeEnvironment, typeReferenceName } from './type-environment.ts'
 
 export type BroadTypeKind = 'top' | 'object' | 'record'
 
@@ -122,7 +122,46 @@ export function typesHaveSameSyntax(
   return normalizedTypeText(sourceText, left) === normalizedTypeText(sourceText, right)
 }
 
-export function isDefinitelyObjectType(type: ESTree.TSType): boolean {
+function resolvedAlias(
+  name: string | undefined,
+  environment: TypeEnvironment,
+): { readonly aliased: ESTree.TSType; readonly remaining: TypeEnvironment } | undefined {
+  const alias = name === undefined ? undefined : environment.aliases.get(name)
+
+  if (
+    alias === undefined ||
+    (alias.typeParameters !== null && alias.typeParameters !== undefined)
+  ) {
+    return undefined
+  }
+
+  const aliases = new Map([...environment.aliases].filter(([aliasName]) => aliasName !== name))
+
+  return { aliased: alias.typeAnnotation, remaining: { ...environment, aliases } }
+}
+
+function interfaceMembers(
+  name: string | undefined,
+  environment: TypeEnvironment,
+): readonly ESTree.TSSignature[] {
+  const declarations = name === undefined ? undefined : environment.interfaces.get(name)
+
+  return (declarations ?? []).flatMap((declaration) => declaration.body.body)
+}
+
+function isDefinitelyNamedObjectType(
+  type: ESTree.TSTypeReference,
+  environment: TypeEnvironment,
+): boolean {
+  const name = typeReferenceName(type)
+  const alias = resolvedAlias(name, environment)
+
+  return alias === undefined
+    ? interfaceMembers(name, environment).length > 0
+    : isDefinitelyObjectType(alias.aliased, alias.remaining)
+}
+
+export function isDefinitelyObjectType(type: ESTree.TSType, environment: TypeEnvironment): boolean {
   if (DEFINITELY_OBJECT_TYPES.has(type.type)) {
     return true
   }
@@ -131,20 +170,42 @@ export function isDefinitelyObjectType(type: ESTree.TSType): boolean {
     return type.members.length > 0
   }
 
+  if (type.type === 'TSTypeReference') {
+    return isDefinitelyNamedObjectType(type, environment)
+  }
+
   if (type.type === 'TSIntersectionType') {
-    return type.types.every(isDefinitelyObjectType)
+    return type.types.every((member) => isDefinitelyObjectType(member, environment))
   }
 
   return (
     type.type === 'TSTypeOperator' &&
     type.operator === 'readonly' &&
-    isDefinitelyObjectType(type.typeAnnotation)
+    isDefinitelyObjectType(type.typeAnnotation, environment)
   )
 }
 
-export function isDefinitelyNarrowerRecordType(type: ESTree.TSType): boolean {
+function hasNamedMember(members: readonly ESTree.TSSignature[]): boolean {
+  return members.some((member) => member.type !== 'TSIndexSignature')
+}
+
+function isDefinitelyNarrowerNamedRecordType(
+  name: string | undefined,
+  environment: TypeEnvironment,
+): boolean {
+  const alias = resolvedAlias(name, environment)
+
+  return alias === undefined
+    ? hasNamedMember(interfaceMembers(name, environment))
+    : isDefinitelyNarrowerRecordType(alias.aliased, alias.remaining)
+}
+
+export function isDefinitelyNarrowerRecordType(
+  type: ESTree.TSType,
+  environment: TypeEnvironment,
+): boolean {
   if (type.type === 'TSTypeLiteral') {
-    return type.members.some((member) => member.type !== 'TSIndexSignature')
+    return hasNamedMember(type.members)
   }
 
   if (type.type !== 'TSTypeReference') {
@@ -156,13 +217,16 @@ export function isDefinitelyNarrowerRecordType(type: ESTree.TSType): boolean {
   if (name === READONLY_TYPE_NAME) {
     const wrapped = typeArgument(type, 0)
 
-    return wrapped !== undefined && isDefinitelyNarrowerRecordType(wrapped)
+    return wrapped !== undefined && isDefinitelyNarrowerRecordType(wrapped, environment)
+  }
+
+  if (name !== RECORD_TYPE_NAME) {
+    return isDefinitelyNarrowerNamedRecordType(name, environment)
   }
 
   const value = typeArgument(type, 1)
 
   return (
-    name === RECORD_TYPE_NAME &&
     (type.typeArguments?.params.length ?? 0) === 2 &&
     value !== undefined &&
     !isUnknownOrAnyType(value)

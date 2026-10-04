@@ -51,3 +51,71 @@ export function functionName(sourceCode: SourceCode, owner: FunctionOwner | unde
 
   return inheritedFunctionName(sourceCode, owner) ?? ANONYMOUS_FUNCTION_NAME
 }
+
+function isExportDeclaration(node: ESTree.Node): boolean {
+  return node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration'
+}
+
+function siblingsOf(parent: ESTree.Node): readonly ESTree.Node[] {
+  if (
+    parent.type === 'Program' ||
+    parent.type === 'BlockStatement' ||
+    parent.type === 'TSModuleBlock' ||
+    parent.type === 'ClassBody'
+  ) {
+    return parent.body
+  }
+
+  return []
+}
+
+function previousSibling(node: ESTree.Node): ESTree.Node | undefined {
+  const { parent } = node
+
+  if (parent === null) {
+    return undefined
+  }
+
+  const siblings = siblingsOf(parent)
+
+  return siblings[siblings.indexOf(node) - 1]
+}
+
+function declaredSignatureName(statement: ESTree.Node): string | undefined {
+  const declaration =
+    statement.type === 'ExportNamedDeclaration' || statement.type === 'ExportDefaultDeclaration'
+      ? statement.declaration
+      : statement
+
+  return declaration?.type === 'TSDeclareFunction' ? declaration.id?.name : undefined
+}
+
+function isMethodOverloadImplementation(
+  sourceCode: SourceCode,
+  method: ESTree.MethodDefinition,
+): boolean {
+  const previous = previousSibling(method)
+
+  return (
+    previous?.type === 'MethodDefinition' &&
+    previous.value.type === 'TSEmptyBodyFunctionExpression' &&
+    previous.static === method.static &&
+    sourceKeyName(sourceCode, previous.key) === sourceKeyName(sourceCode, method.key)
+  )
+}
+
+export function isOverloadImplementation(sourceCode: SourceCode, owner: FunctionOwner): boolean {
+  const { parent } = owner
+
+  if (parent.type === 'MethodDefinition') {
+    return isMethodOverloadImplementation(sourceCode, parent)
+  }
+
+  if (owner.type !== 'FunctionDeclaration' || owner.id === null || owner.id === undefined) {
+    return false
+  }
+
+  const previous = previousSibling(isExportDeclaration(parent) ? parent : owner)
+
+  return previous !== undefined && declaredSignatureName(previous) === owner.id.name
+}

@@ -22,3 +22,6 @@ const makeArrow = (): Record<string, Command> => ({ start: startCommand })
 class Registry { commands: Record<string, Command> = { start: startCommand } }
 class Accessors { accessor commands: Record<string, Command> = { start: startCommand } }
 const chained = { start: startCommand } as Record<string, Command> as object
+declare function unrelated(): void
+function afterDeclare(): unknown { return {} }
+abstract class Overloads { abstract read(key: string): unknown; write(key?: string): unknown { return { key } } }

@@ -8,7 +8,14 @@ const piped = pipe(
 )
 const siblingArguments = Array.map(values, transform)
 const globalStaticArgument = Array.map(globalThis.Array.from(values), (value) => value)
-const aliasedBarrelNesting = Arr.map(Arr.from(values), (value) => value)
-const aliasedLeafNesting = ArrayOps.map(ArrayOps.from(values), (value) => value)
+const typeOnlyImportNesting = TypeOnlyArray.map(TypeOnlyArray.from(values), (value) => value)
 const outerIsNotAnArrayCall = identity(Array.from(values))
 const referenceWithoutCall = Array.map(values, () => Array.isArray)
+
+function localGlobalAlias() {
+  const Array = globalThis.Array
+
+  return Array.from(Array.of(1))
+}
+
+import { type Array as TypeOnlyArray } from 'effect'

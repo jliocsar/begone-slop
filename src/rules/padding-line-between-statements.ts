@@ -3,6 +3,7 @@ import { defineRule } from '@oxlint/plugins'
 import {
   adjacentPairs,
   blankLinesBetween,
+  lineBreakOf,
   lineStartRange,
   statementsOf,
 } from '../shared/source-position.ts'
@@ -71,7 +72,7 @@ const STATEMENT_MATCHERS = {
   '*': () => true,
   return: (node) => node.type === 'ReturnStatement',
   'block-like': isBlockLike,
-  function: (node) => node.type === 'FunctionDeclaration',
+  function: (node) => node.type === 'FunctionDeclaration' || node.type === 'TSDeclareFunction',
   class: (node) => node.type === 'ClassDeclaration',
   import: (node) => node.type === 'ImportDeclaration',
   'singleline-const': (node) => isSingleLineDeclaration(node, 'const'),
@@ -149,7 +150,7 @@ function continuesOverloads(previous: ESTree.Node, current: ESTree.Node): boolea
   const signature = exportedDeclaration(previous)
   const following = exportedDeclaration(current)
 
-  if (signature.type !== 'TSDeclareFunction' || signature.id === null) {
+  if (signature.type !== 'TSDeclareFunction') {
     return false
   }
 
@@ -157,7 +158,7 @@ function continuesOverloads(previous: ESTree.Node, current: ESTree.Node): boolea
     return false
   }
 
-  return following.id?.name === signature.id.name
+  return following.id?.name === signature.id?.name
 }
 
 function requiresBlankLine(
@@ -176,12 +177,23 @@ function requiresBlankLine(
   return governingSpec?.blankLine === 'always'
 }
 
+function leadingNode(node: ESTree.Node): ESTree.Node {
+  const declaration = exportedDeclaration(node)
+  const firstDecorator =
+    declaration.type === 'ClassDeclaration' ? declaration.decorators[0] : undefined
+
+  return firstDecorator !== undefined && firstDecorator.range[0] < node.range[0]
+    ? firstDecorator
+    : node
+}
+
 function fenceAnchor(sourceCode: SourceCode, previous: ESTree.Node, current: ESTree.Node): Span {
+  const leading = leadingNode(current)
   const introducing = sourceCode
-    .getCommentsBefore(current)
+    .getCommentsBefore(leading)
     .filter((comment) => comment.loc.start.line > previous.loc.end.line)
 
-  return introducing[0] ?? current
+  return introducing[0] ?? leading
 }
 
 function missingBlankLine(
@@ -203,7 +215,8 @@ function missingBlankLine(
   return {
     node: current,
     messageId: 'expectedBlankLine',
-    fix: (fixer) => fixer.insertTextBeforeRange(lineStartRange(anchor), '\n'),
+    fix: (fixer) =>
+      fixer.insertTextBeforeRange(lineStartRange(anchor), lineBreakOf(sourceCode.text)),
   }
 }
 

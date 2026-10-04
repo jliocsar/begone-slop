@@ -44,7 +44,7 @@
   },
   "scripts": {
     "build": "bunx --bun tsdown src/index.ts --format esm --dts --clean",
-    "test": "bun test",
+    "test": "bun test ./test/",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "bunx --bun oxlint --deny-warnings",
     "lint:fix": "bunx --bun oxlint --fix --deny-warnings",

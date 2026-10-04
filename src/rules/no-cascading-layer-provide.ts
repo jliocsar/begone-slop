@@ -1,9 +1,7 @@
 import type { ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
-import { isEffectLayerReference } from '../shared/layer-import.ts'
+import { isEffectLayerReference, pipeStages } from '../shared/layer-import.ts'
 import { stringLiteralValue } from '../shared/literal.ts'
-
-const PIPE = 'pipe'
 
 const PROVISIONING_METHODS = new Set(['provide', 'provideMerge'])
 
@@ -34,16 +32,6 @@ function isLayerProvision(sourceCode: SourceCode, argument: ESTree.Node): boolea
   )
 }
 
-function isPipeCall(node: ESTree.CallExpression): boolean {
-  const { callee } = node
-
-  return (
-    callee.type === 'MemberExpression' &&
-    callee.property.type === 'Identifier' &&
-    callee.property.name === PIPE
-  )
-}
-
 export default defineRule({
   meta: {
     type: 'problem',
@@ -53,11 +41,7 @@ export default defineRule({
   create(context) {
     return {
       CallExpression(node) {
-        if (!isPipeCall(node)) {
-          return
-        }
-
-        const stages = node.arguments.filter((argument) =>
+        const stages = pipeStages(context.sourceCode, node).filter((argument) =>
           isLayerProvision(context.sourceCode, argument),
         )
 

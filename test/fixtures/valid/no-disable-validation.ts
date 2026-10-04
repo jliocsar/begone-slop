@@ -6,3 +6,4 @@ const anotherOption = { disableParsing: true }
 const method = { disableValidation() { return true } }
 options.disableValidation = true
 decodeUser(payload, { errors: 'all' })
+const v4ChecksOn = { disableChecks: false }

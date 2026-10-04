@@ -1,4 +1,5 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { Definition, ESTree, SourceCode } from '@oxlint/plugins'
+import { findVariable } from './binding-scope.ts'
 
 export const EFFECT_ARRAY_BINDING = 'Array'
 
@@ -6,32 +7,42 @@ const EFFECT_PACKAGE = 'effect'
 
 const EFFECT_ARRAY_MODULE = 'effect/Array'
 
-function bindsBarrelArray(specifier: ESTree.ImportDeclarationSpecifier): boolean {
+const TYPE_ONLY = 'type'
+
+function bindsEffectArray(definition: Definition): boolean {
+  const declaration = definition.parent
+
+  if (
+    definition.type !== 'ImportBinding' ||
+    declaration?.type !== 'ImportDeclaration' ||
+    declaration.importKind === TYPE_ONLY
+  ) {
+    return false
+  }
+
+  const specifier = definition.node
+
+  if (specifier.type === 'ImportSpecifier') {
+    return (
+      specifier.importKind !== TYPE_ONLY &&
+      declaration.source.value === EFFECT_PACKAGE &&
+      specifier.imported.type === 'Identifier' &&
+      specifier.imported.name === EFFECT_ARRAY_BINDING
+    )
+  }
+
   return (
-    specifier.type === 'ImportSpecifier' &&
-    specifier.imported.type === 'Identifier' &&
-    specifier.imported.name === EFFECT_ARRAY_BINDING &&
-    specifier.local.name === EFFECT_ARRAY_BINDING
+    specifier.type === 'ImportNamespaceSpecifier' &&
+    declaration.source.value === EFFECT_ARRAY_MODULE
   )
 }
 
-function bindsLeafArray(specifier: ESTree.ImportDeclarationSpecifier): boolean {
-  return (
-    specifier.type === 'ImportNamespaceSpecifier' && specifier.local.name === EFFECT_ARRAY_BINDING
-  )
-}
+export function isEffectArrayReference(sourceCode: SourceCode, node: ESTree.Node): boolean {
+  if (node.type !== 'Identifier') {
+    return false
+  }
 
-function bindsArrayUnaliased(declaration: ESTree.ImportDeclaration): boolean {
-  const source = declaration.source.value
+  const variable = findVariable(sourceCode.getScope(node), node.name)
 
-  return (
-    (source === EFFECT_PACKAGE && declaration.specifiers.some(bindsBarrelArray)) ||
-    (source === EFFECT_ARRAY_MODULE && declaration.specifiers.some(bindsLeafArray))
-  )
-}
-
-export function importsEffectArrayUnaliased(program: ESTree.Program): boolean {
-  return program.body.some(
-    (statement) => statement.type === 'ImportDeclaration' && bindsArrayUnaliased(statement),
-  )
+  return variable !== undefined && variable.defs.some(bindsEffectArray)
 }
