@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/jliocsar/begone-slop/compare/v0.2.6...v0.2.7) (2026-10-04)
+
+
+### Features
+
+* **preset:** require braces on every control-flow body ([#21](https://github.com/jliocsar/begone-slop/issues/21)) ([c244058](https://github.com/jliocsar/begone-slop/commit/c24405833e4eef01de17c32fd47dfd559e263f41))
+
 ## [0.2.6](https://github.com/jliocsar/begone-slop/compare/v0.2.5...v0.2.6) (2026-10-04)
 
 
