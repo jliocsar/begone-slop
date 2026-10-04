@@ -10,7 +10,7 @@ const CONFIGS = `${import.meta.dir}/tmp`
 
 const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
-const CASES: { rule: string; lines: number[] }[] = [
+const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
   { rule: 'no-shadowed-error-field', lines: [1, 2, 3, 4, 5, 6, 7] },
   { rule: 'expect-padding', lines: [2, 4] },
@@ -109,9 +109,9 @@ async function runRule(
   }
 }
 
-for (const { rule, lines } of CASES) {
-  test(`${rule} rejects its fixture`, async () => {
-    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${rule}.ts`)
+for (const { rule, lines, fixture = `${rule}.ts` } of CASES) {
+  test(`${rule} rejects ${fixture}`, async () => {
+    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${fixture}`)
     const unrendered = messages.filter((message) => message.includes('{{') || message.length === 0)
 
     expect(reported).toEqual(lines)
