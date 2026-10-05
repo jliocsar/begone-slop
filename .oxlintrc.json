@@ -32,7 +32,6 @@
 
     "id-length": ["error", { "min": 2, "exceptions": ["i", "j"], "properties": "never" }],
 
-    "curly": ["error", "all"],
     "no-else-return": ["error", { "allowElseIf": false }],
     "no-nested-ternary": "error",
     "prefer-template": "error",
