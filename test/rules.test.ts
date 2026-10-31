@@ -10,7 +10,7 @@ const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
 const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
-  { rule: 'no-shadowed-error-field', lines: [1, 2, 3, 4, 5, 6, 7] },
+  { rule: 'no-shadowed-error-field', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
   { rule: 'expect-padding', lines: [2, 4, 8, 10] },
   {
     rule: 'padding-line-between-statements',

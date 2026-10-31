@@ -33,3 +33,10 @@ class NotAnError extends Data.Class<{ readonly name: string }> {}
 class TaggedData extends Data.TaggedClass('TaggedData')<{ readonly name: string }> {}
 class PlainStruct extends Schema.Class<PlainStruct>('PlainStruct')(Schema.Struct({ name: Schema.String })) {}
 class StructNamed extends Schema.ErrorClass<StructNamed>('StructNamed')(Schema.Struct({ userName: Schema.String })) {}
+
+class CurrentNamed extends Schema.TaggedError<CurrentNamed>()('CurrentNamed', { userName: Schema.String, message: Schema.String }) {}
+class CurrentUntaggedNamed extends Schema.Error<CurrentUntaggedNamed>('CurrentUntaggedNamed')({ agentName: Schema.String }) {}
+class TaggedModel extends Schema.TaggedClass<TaggedModel>()('TaggedModel', { name: Schema.String }) {}
+class TaggedStructModel extends Schema.TaggedClass<TaggedStructModel>()('TaggedStructModel', Schema.Struct({ stack: Schema.String })) {}
+class DataNamedOnly extends Data.TaggedError('DataNamedOnly')<{ readonly agentName: string }> {}
+const tagged = Data.TaggedError('Inline')
