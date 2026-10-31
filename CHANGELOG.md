@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/jliocsar/begone-slop/compare/v0.2.9...v0.2.10) (2026-10-31)
+
+
+### Bug Fixes
+
+* **no-shadowed-error-field:** match Schema.TaggedError and Schema.Error ([#28](https://github.com/jliocsar/begone-slop/issues/28)) ([9f80a7f](https://github.com/jliocsar/begone-slop/commit/9f80a7f5c2c834e43d9a00cb8ca7ad1217aea75e))
+
 ## [0.2.9](https://github.com/jliocsar/begone-slop/compare/v0.2.8...v0.2.9) (2026-10-04)
 
 
