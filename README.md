@@ -124,7 +124,7 @@ sense scoped to test files:
 | `no-silent-error-swallow`           | a catch returning a void effect; `Effect.ignore` with no log  |   ✅   |
 | `no-disable-validation`             | `disableChecks: true` (v3: `disableValidation`), unchecked    |   ✅   |
 | `no-service-option`                 | `Effect.serviceOption` instead of requiring the service       |   ✅   |
-| `no-effect-asvoid`                  | `Effect.asVoid` where the effect can be returned directly     |   ✅   |
+| `no-effect-asvoid`                  | every `Effect.asVoid`, since a lint rule can't see the type   |   ✅   |
 | `no-nested-layer-provide`           | nested `Layer.provide` calls                                  |   ✅   |
 | `no-cascading-layer-provide`        | multiple `Layer.provide` stages in one pipe                   |   ✅   |
 | `no-service-layer-provide`          | a service's static layer providing its own dependencies       |   ✅   |
@@ -208,6 +208,26 @@ Two things to know before extending it:
 
   Keep `diagnostics: false` if you lint with the `effecttsgo` oxlint rules. Leaving both on reports
   every diagnostic twice.
+
+### Alongside `@effect/tsgo`
+
+Two of tsgo's `recommended` rules steer toward code this preset rejects, so turn them off where
+both run:
+
+```jsonc
+{
+  "rules": {
+    "effecttsgo/effect-map-void": "off",
+    "effecttsgo/catch-to-ignore": "off",
+  },
+}
+```
+
+`effect-map-void` fixes a map to `undefined` into `Effect.asVoid`, which `no-effect-asvoid` rejects.
+`catch-to-ignore` fixes a catch returning `Effect.void` into `Effect.ignore`, which
+`no-silent-error-swallow` rejects unless it carries a `log` option. The preset can't switch them off
+itself: naming a rule from a plugin that isn't loaded fails the config (measured on oxlint 1.90.0:
+`Plugin 'effecttsgo' not found`).
 
 ## Requirements
 
