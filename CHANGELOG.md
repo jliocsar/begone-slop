@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.11](https://github.com/jliocsar/begone-slop/compare/v0.2.10...v0.2.11) (2026-11-02)
+
+
+### Features
+
+* add no-service-layer-provide ([45f11f2](https://github.com/jliocsar/begone-slop/commit/45f11f2f3d551fdcc5d012fbeaff42431bb025b6))
+
+
+### Bug Fixes
+
+* **no-silent-error-swallow:** reject Effect.ignore without a log option ([3081dee](https://github.com/jliocsar/begone-slop/commit/3081dee7e9e119fba2e5ea39c2a1a1db675217c5))
+
 ## [0.2.10](https://github.com/jliocsar/begone-slop/compare/v0.2.9...v0.2.10) (2026-10-31)
 
 
