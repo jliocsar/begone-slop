@@ -58,8 +58,8 @@
   "devDependencies": {
     "@types/bun": "^1.3.14",
     "oxfmt": "^0.62.0",
-    "oxlint": "1.77.0",
-    "oxlint-tsgolint": "^7.0.2001",
+    "oxlint": "1.90.0",
+    "oxlint-tsgolint": "7.0.2005",
     "tsdown": "^0.22.0",
     "typescript": "7.0.2"
   },
