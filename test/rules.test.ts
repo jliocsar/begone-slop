@@ -60,6 +60,11 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
     rule: 'no-silent-error-swallow',
     lines: [1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 17, 18, 22, 23, 24, 25],
   },
+  {
+    rule: 'no-silent-error-swallow',
+    fixture: 'no-silent-error-swallow.ignore.ts',
+    lines: [1, 2, 3, 4, 5, 6, 7, 8],
+  },
   { rule: 'no-shadowed-standard-array-static', lines: [2, 3, 4, 5, 6] },
   { rule: 'no-nested-effect-array-methods', lines: [2, 6, 7, 8, 12, 13] },
   {

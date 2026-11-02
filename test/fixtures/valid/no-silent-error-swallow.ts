@@ -5,7 +5,13 @@ import * as Stream from 'effect/Stream'
 Effect.catchAll(program, () => Effect.void)
 Effect.catchAllCause(program, () => Effect.void)
 Effect.orElse(program, () => Effect.void)
-Effect.ignore(program)
+
+// Ignoring that still reports the failure.
+Effect.ignore(program, { log: true })
+Effect.ignore(program, { log: 'Warn' })
+program.pipe(Effect.ignore({ log: true }))
+program.pipe(Effect.ignoreCause({ log: 'Error', message: 'cleanup failed' }))
+Effect.ignore(program, { 'log': true })
 
 // A handler that does something with the error.
 Effect.catch(program, () => Effect.succeed(fallback))

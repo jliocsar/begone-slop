@@ -121,7 +121,7 @@ sense scoped to test files:
 | ----------------------------------- | ------------------------------------------------------------- | :----: |
 | `no-tag-access`                     | reading the private `_tag` discriminant directly              |   ✅   |
 | `no-shadowed-error-field`           | a `name`/`stack` field that stops an error identifying itself |   ✅   |
-| `no-silent-error-swallow`           | catch handlers that swallow the error with a void effect      |   ✅   |
+| `no-silent-error-swallow`           | a catch returning a void effect; `Effect.ignore` with no log  |   ✅   |
 | `no-disable-validation`             | `disableChecks: true` (v3: `disableValidation`), unchecked    |   ✅   |
 | `no-service-option`                 | `Effect.serviceOption` instead of requiring the service       |   ✅   |
 | `no-effect-asvoid`                  | `Effect.asVoid` where the effect can be returned directly     |   ✅   |
