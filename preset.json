@@ -35,6 +35,7 @@
 
     "begone-slop/no-cascading-layer-provide": "error",
     "begone-slop/no-nested-layer-provide": "error",
+    "begone-slop/no-service-layer-provide": "error",
     "begone-slop/no-reexport-only-modules": "error",
 
     "begone-slop/no-unsafe-dictionary-type": "error",

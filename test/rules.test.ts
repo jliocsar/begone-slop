@@ -77,6 +77,7 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
     rule: 'no-cascading-layer-provide',
     lines: [4, 5, 6, 7, 8, 9, 14, 15, 15, 18, 20, 21, 22, 23],
   },
+  { rule: 'no-service-layer-provide', lines: [2, 3, 4, 5, 6, 7, 10, 13] },
   { rule: 'no-nested-layer-provide', lines: [1, 2, 3, 3, 4, 4, 5, 8, 10, 11, 12, 13, 14] },
   { rule: 'no-reexport-only-modules', lines: [1] },
   { rule: 'no-unsafe-dictionary-type', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },

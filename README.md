@@ -127,6 +127,7 @@ sense scoped to test files:
 | `no-effect-asvoid`                  | `Effect.asVoid` where the effect can be returned directly     |   ✅   |
 | `no-nested-layer-provide`           | nested `Layer.provide` calls                                  |   ✅   |
 | `no-cascading-layer-provide`        | multiple `Layer.provide` stages in one pipe                   |   ✅   |
+| `no-service-layer-provide`          | a service's static layer providing its own dependencies       |   ✅   |
 | `no-nested-effect-array-methods`    | one `effect/Array` call nested inside another                 |   ✅   |
 | `no-shadowed-standard-array-static` | standard `Array` statics when `Array` is Effect's             |   ✅   |
 | `prefer-option-from-nullable`       | a nullish ternary that restates `Option.fromNullishOr` & co.  |   ✅   |

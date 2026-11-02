@@ -19,6 +19,7 @@ import noReflectApply from './rules/no-reflect-apply.ts'
 import noReflectGet from './rules/no-reflect-get.ts'
 import noRuntimeTypeof from './rules/no-runtime-typeof.ts'
 import noServiceOption from './rules/no-service-option.ts'
+import noServiceLayerProvide from './rules/no-service-layer-provide.ts'
 import noShadowedErrorField from './rules/no-shadowed-error-field.ts'
 import noShadowedStandardArrayStatic from './rules/no-shadowed-standard-array-static.ts'
 import noSilentErrorSwallow from './rules/no-silent-error-swallow.ts'
@@ -51,6 +52,7 @@ export default definePlugin({
     'no-in-operator': noInOperator,
     'no-service-option': noServiceOption,
     'no-effect-asvoid': noEffectAsVoid,
+    'no-service-layer-provide': noServiceLayerProvide,
     'no-disable-validation': noDisableValidation,
     'no-banned-type-assertions': noBannedTypeAssertions,
     'no-optional-function-parameters': noOptionalFunctionParameters,
