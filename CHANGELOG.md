@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.12](https://github.com/jliocsar/begone-slop/compare/v0.2.11...v0.2.12) (2026-11-06)
+
+
+### Bug Fixes
+
+* **no-tag-access:** give exhaustiveness as the reason, not privacy ([30c2851](https://github.com/jliocsar/begone-slop/commit/30c28516f78d06c4dea4c1279d9ed2032d1d4868))
+
 ## [0.2.11](https://github.com/jliocsar/begone-slop/compare/v0.2.10...v0.2.11) (2026-11-02)
 
 
