@@ -4,7 +4,7 @@ import { defineRule } from '@oxlint/plugins'
 const TAG = '_tag'
 
 const MESSAGE =
-  'Do not read `_tag` — the `_` prefix means private. Use Match.tag/Match.tags/Match.tagsExhaustive, a library guard (Cause.isTimeoutError, Exit.isFailure, Result.isFailure), or `instanceof` where the module instance is shared. For a nested reason union (SqlError, AiError), use Effect.catchReason/Effect.catchReasons/Effect.unwrapReason, or Match.value(error.reason).pipe(Match.tagsExhaustive({ ... })).'
+  'Do not read `_tag` — a read keeps compiling when a variant is added, so the new case goes unhandled. Use Match.tagsExhaustive, Match.tag/Match.tags, a library guard (Cause.isTimeoutError, Exit.isFailure, Result.isFailure), or `instanceof` where the module instance is shared. For a nested reason union (SqlError, AiError), use Effect.catchReason/Effect.catchReasons/Effect.unwrapReason, or Match.value(error.reason).pipe(Match.tagsExhaustive({ ... })).'
 
 function namesTheTag(computed: boolean, key: ESTree.Node): boolean {
   if (computed) {
@@ -23,7 +23,7 @@ function definesTheTag(node: ESTree.MemberExpression): boolean {
 export default defineRule({
   meta: {
     type: 'problem',
-    docs: { description: 'forbid reading the private `_tag` discriminant directly' },
+    docs: { description: 'forbid reading the `_tag` discriminant directly' },
     messages: { noTagAccess: MESSAGE },
   },
   create(context) {

@@ -117,23 +117,23 @@ sense scoped to test files:
 
 ### Effect
 
-| Rule                                | What it rejects                                               | Preset |
-| ----------------------------------- | ------------------------------------------------------------- | :----: |
-| `no-tag-access`                     | reading the private `_tag` discriminant directly              |   ✅   |
-| `no-shadowed-error-field`           | a `name`/`stack` field that stops an error identifying itself |   ✅   |
-| `no-silent-error-swallow`           | a catch returning a void effect; `Effect.ignore` with no log  |   ✅   |
-| `no-disable-validation`             | `disableChecks: true` (v3: `disableValidation`), unchecked    |   ✅   |
-| `no-service-option`                 | `Effect.serviceOption` instead of requiring the service       |   ✅   |
-| `no-effect-asvoid`                  | every `Effect.asVoid`, since a lint rule can't see the type   |   ✅   |
-| `no-nested-layer-provide`           | nested `Layer.provide` calls                                  |   ✅   |
-| `no-cascading-layer-provide`        | multiple `Layer.provide` stages in one pipe                   |   ✅   |
-| `no-service-layer-provide`          | a service's static layer providing its own dependencies       |   ✅   |
-| `no-nested-effect-array-methods`    | one `effect/Array` call nested inside another                 |   ✅   |
-| `no-shadowed-standard-array-static` | standard `Array` statics when `Array` is Effect's             |   ✅   |
-| `prefer-option-from-nullable`       | a nullish ternary that restates `Option.fromNullishOr` & co.  |   ✅   |
-| `prefer-effect-match`               | chained literal ternaries over one subject                    |   ✅   |
-| `pipe-max-arguments`                | a `.pipe()` call with more than 20 arguments                  |   ✅   |
-| `no-sql-type-parameter`             | `sql<Type>` templates that assert a row shape                 |   ✅   |
+| Rule                                | What it rejects                                                      | Preset |
+| ----------------------------------- | -------------------------------------------------------------------- | :----: |
+| `no-tag-access`                     | reading the `_tag` discriminant directly, which skips exhaustiveness |   ✅   |
+| `no-shadowed-error-field`           | a `name`/`stack` field that stops an error identifying itself        |   ✅   |
+| `no-silent-error-swallow`           | a catch returning a void effect; `Effect.ignore` with no log         |   ✅   |
+| `no-disable-validation`             | `disableChecks: true` (v3: `disableValidation`), unchecked           |   ✅   |
+| `no-service-option`                 | `Effect.serviceOption` instead of requiring the service              |   ✅   |
+| `no-effect-asvoid`                  | every `Effect.asVoid`, since a lint rule can't see the type          |   ✅   |
+| `no-nested-layer-provide`           | nested `Layer.provide` calls                                         |   ✅   |
+| `no-cascading-layer-provide`        | multiple `Layer.provide` stages in one pipe                          |   ✅   |
+| `no-service-layer-provide`          | a service's static layer providing its own dependencies              |   ✅   |
+| `no-nested-effect-array-methods`    | one `effect/Array` call nested inside another                        |   ✅   |
+| `no-shadowed-standard-array-static` | standard `Array` statics when `Array` is Effect's                    |   ✅   |
+| `prefer-option-from-nullable`       | a nullish ternary that restates `Option.fromNullishOr` & co.         |   ✅   |
+| `prefer-effect-match`               | chained literal ternaries over one subject                           |   ✅   |
+| `pipe-max-arguments`                | a `.pipe()` call with more than 20 arguments                         |   ✅   |
+| `no-sql-type-parameter`             | `sql<Type>` templates that assert a row shape                        |   ✅   |
 
 ### Structure and style
 
@@ -228,6 +228,10 @@ both run:
 `no-silent-error-swallow` rejects unless it carries a `log` option. The preset can't switch them off
 itself: naming a rule from a plugin that isn't loaded fails the config (measured on oxlint 1.90.0:
 `Plugin 'effecttsgo' not found`).
+
+Leave `unnecessary-effect-gen` on, but don't take its fix for a body with no return and a non-void
+success: it writes `Effect.asVoid`, which `no-effect-asvoid` rejects (read in `@effect/tsgo` 0.67.4's
+source, not run).
 
 ## Requirements
 
