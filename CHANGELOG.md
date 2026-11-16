@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.13](https://github.com/jliocsar/begone-slop/compare/v0.2.12...v0.2.13) (2026-11-16)
+
+
+### Features
+
+* add eight Effect convention rules ([#34](https://github.com/jliocsar/begone-slop/issues/34)) ([e1a83be](https://github.com/jliocsar/begone-slop/commit/e1a83be8459bb58172665a831b6e1c54e6da482d))
+* add five rules borrowed from anti-slop, turn on max-depth and ban-ts-comment ([#32](https://github.com/jliocsar/begone-slop/issues/32)) ([2c471b5](https://github.com/jliocsar/begone-slop/commit/2c471b52f011630472ac1952d8a4a188be87c4b5))
+
 ## [0.2.12](https://github.com/jliocsar/begone-slop/compare/v0.2.11...v0.2.12) (2026-11-06)
 
 
