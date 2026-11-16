@@ -2,6 +2,14 @@ import { definePlugin } from '@oxlint/plugins'
 import expectPadding from './rules/expect-padding.ts'
 import maxTernaryDepth from './rules/max-ternary-depth.ts'
 import noArrayFilterMap from './rules/no-array-filter-map.ts'
+import noManualTaggedConstruction from './rules/no-manual-tagged-construction.ts'
+import noReprovideAmbientService from './rules/no-reprovide-ambient-service.ts'
+import noServiceParameters from './rules/no-service-parameters.ts'
+import noTestCodeInSrc from './rules/no-test-code-in-src.ts'
+import preferTaggedErrorHandling from './rules/prefer-tagged-error-handling.ts'
+import preferYieldService from './rules/prefer-yield-service.ts'
+import requireOperationSpan from './rules/require-operation-span.ts'
+import requireServiceMakeLayer from './rules/require-service-make-layer.ts'
 import noBannedTypeAssertions from './rules/no-banned-type-assertions.ts'
 import noCascadingLayerProvide from './rules/no-cascading-layer-provide.ts'
 import noChainedTypeAssertions from './rules/no-chained-type-assertions.ts'
@@ -91,5 +99,13 @@ export default definePlugin({
     'no-reduce-accumulator-copy': noReduceAccumulatorCopy,
     'no-disabled-type-assertion-rules': noDisabledTypeAssertionRules,
     'require-cause-when-narrowing': requireCauseWhenNarrowing,
+    'no-manual-tagged-construction': noManualTaggedConstruction,
+    'no-test-code-in-src': noTestCodeInSrc,
+    'prefer-tagged-error-handling': preferTaggedErrorHandling,
+    'prefer-yield-service': preferYieldService,
+    'no-reprovide-ambient-service': noReprovideAmbientService,
+    'no-service-parameters': noServiceParameters,
+    'require-service-make-layer': requireServiceMakeLayer,
+    'require-operation-span': requireOperationSpan,
   },
 })

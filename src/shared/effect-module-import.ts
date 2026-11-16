@@ -13,14 +13,10 @@ function namesTheExport(imported: ESTree.ModuleExportName, exportName: string): 
     : imported.value === exportName
 }
 
-function bindsEffectModule(definition: Definition, moduleName: string): boolean {
+function importsEffectModule(definition: Definition, moduleName: string): boolean {
   const declaration = definition.parent
 
-  if (
-    definition.type !== 'ImportBinding' ||
-    declaration?.type !== 'ImportDeclaration' ||
-    declaration.importKind === TYPE_ONLY
-  ) {
+  if (definition.type !== 'ImportBinding' || declaration?.type !== 'ImportDeclaration') {
     return false
   }
 
@@ -28,9 +24,7 @@ function bindsEffectModule(definition: Definition, moduleName: string): boolean 
 
   if (specifier.type === 'ImportSpecifier') {
     return (
-      specifier.importKind !== TYPE_ONLY &&
-      declaration.source.value === EFFECT_PACKAGE &&
-      namesTheExport(specifier.imported, moduleName)
+      declaration.source.value === EFFECT_PACKAGE && namesTheExport(specifier.imported, moduleName)
     )
   }
 
@@ -38,6 +32,35 @@ function bindsEffectModule(definition: Definition, moduleName: string): boolean 
     specifier.type === 'ImportNamespaceSpecifier' &&
     declaration.source.value === `${EFFECT_PACKAGE}/${moduleName}`
   )
+}
+
+function isTypeOnlyImport(definition: Definition): boolean {
+  const declaration = definition.parent
+  const specifier = definition.node
+
+  return (
+    declaration?.type === 'ImportDeclaration' &&
+    (declaration.importKind === TYPE_ONLY ||
+      (specifier.type === 'ImportSpecifier' && specifier.importKind === TYPE_ONLY))
+  )
+}
+
+function bindsEffectModule(definition: Definition, moduleName: string): boolean {
+  return importsEffectModule(definition, moduleName) && !isTypeOnlyImport(definition)
+}
+
+export function namesEffectModuleType(
+  sourceCode: SourceCode,
+  node: ESTree.Node,
+  moduleName: string,
+): boolean {
+  if (node.type !== 'Identifier') {
+    return false
+  }
+
+  const variable = findVariable(sourceCode.getScope(node), node.name)
+
+  return variable?.defs.some((definition) => importsEffectModule(definition, moduleName)) ?? false
 }
 
 function staticMemberName(node: ESTree.MemberExpression): string | undefined {
