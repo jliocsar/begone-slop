@@ -1,11 +1,14 @@
 import { definePlugin } from '@oxlint/plugins'
 import expectPadding from './rules/expect-padding.ts'
+import maxTernaryDepth from './rules/max-ternary-depth.ts'
+import noArrayFilterMap from './rules/no-array-filter-map.ts'
 import noBannedTypeAssertions from './rules/no-banned-type-assertions.ts'
 import noCascadingLayerProvide from './rules/no-cascading-layer-provide.ts'
 import noChainedTypeAssertions from './rules/no-chained-type-assertions.ts'
 import noComments from './rules/no-comments.ts'
 import noConditionalEmptyObjectSpread from './rules/no-conditional-empty-object-spread.ts'
 import noDisableValidation from './rules/no-disable-validation.ts'
+import noDisabledTypeAssertionRules from './rules/no-disabled-type-assertion-rules.ts'
 import noEffectAsVoid from './rules/no-effect-asvoid.ts'
 import noInOperator from './rules/no-in-operator.ts'
 import noKnownValueWidening from './rules/no-known-value-widening.ts'
@@ -14,6 +17,7 @@ import noNestedEffectArrayMethods from './rules/no-nested-effect-array-methods.t
 import noNestedLayerProvide from './rules/no-nested-layer-provide.ts'
 import noObjectParameters from './rules/no-object-parameters.ts'
 import noOptionalFunctionParameters from './rules/no-optional-function-parameters.ts'
+import noReduceAccumulatorCopy from './rules/no-reduce-accumulator-copy.ts'
 import noReexportOnlyModules from './rules/no-reexport-only-modules.ts'
 import noReflectApply from './rules/no-reflect-apply.ts'
 import noReflectGet from './rules/no-reflect-get.ts'
@@ -36,6 +40,7 @@ import paddingLineBetweenStatements from './rules/padding-line-between-statement
 import pipeMaxArguments from './rules/pipe-max-arguments.ts'
 import preferEffectMatch from './rules/prefer-effect-match.ts'
 import preferOptionFromNullable from './rules/prefer-option-from-nullable.ts'
+import requireCauseWhenNarrowing from './rules/require-cause-when-narrowing.ts'
 import requireSafetyCommentForTypeAssertion from './rules/require-safety-comment-for-type-assertion.ts'
 import statementOrder from './rules/statement-order.ts'
 
@@ -81,5 +86,10 @@ export default definePlugin({
     'no-runtime-typeof': noRuntimeTypeof,
     'no-unsafe-dictionary-type': noUnsafeDictionaryType,
     'no-widen-then-assert': noWidenThenAssert,
+    'max-ternary-depth': maxTernaryDepth,
+    'no-array-filter-map': noArrayFilterMap,
+    'no-reduce-accumulator-copy': noReduceAccumulatorCopy,
+    'no-disabled-type-assertion-rules': noDisabledTypeAssertionRules,
+    'require-cause-when-narrowing': requireCauseWhenNarrowing,
   },
 })

@@ -1,8 +1,10 @@
 {
-  "plugins": [],
+  "plugins": ["typescript"],
 
   "rules": {
     "curly": ["error", "all"],
+    "max-depth": ["error", 4],
+    "typescript/ban-ts-comment": "error",
 
     "begone-slop/statement-order": "error",
     "begone-slop/no-tag-access": "error",
@@ -45,6 +47,12 @@
     "begone-slop/no-module-mocking": "error",
     "begone-slop/no-comments": "error",
     "begone-slop/no-runtime-typeof": "error",
+
+    "begone-slop/max-ternary-depth": "error",
+    "begone-slop/no-array-filter-map": "error",
+    "begone-slop/no-reduce-accumulator-copy": "error",
+    "begone-slop/no-disabled-type-assertion-rules": "error",
+    "begone-slop/require-cause-when-narrowing": "error",
 
     "begone-slop/padding-line-between-statements": [
       "error",

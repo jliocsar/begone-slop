@@ -26,7 +26,7 @@ export default defineConfig({
 })
 ```
 
-That is the whole setup. `extends` pulls in the 37 rules the preset enables, and `jsPlugins` loads
+That is the whole setup. `extends` pulls in the 43 rules the preset enables, and `jsPlugins` loads
 the plugin itself. Both resolve as ordinary module specifiers, because in a TypeScript config
 `extends` takes config _objects_ and your runtime does the resolving.
 
@@ -76,13 +76,21 @@ Prefer to pick your own rules? Skip `extends` and enable them by name:
 
 ### The preset turns oxlint's defaults off
 
-`preset.json` sets `"plugins": []`. Extending a preset otherwise re-enables oxlint's own default
-plugin set on top of your config, which fails the build on rules nobody chose. If you want
-`unicorn`, `oxc` or the rest, list them yourself in your own `plugins` array — it takes precedence,
-since later config wins.
+`preset.json` sets `"plugins": ["typescript"]` and nothing more. Extending a preset otherwise
+re-enables oxlint's own default plugin set on top of your config, which fails the build on rules
+nobody chose. If you want `unicorn`, `oxc` or the rest, list them yourself in your own `plugins`
+array — it takes precedence, since later config wins.
 
-The one oxlint rule it does turn on is `curly: ["error", "all"]`: every `if`, `else`, `for` and
-`while` body takes braces. It autofixes.
+The `typescript` entry is there for `ban-ts-comment` below. With an empty list in the preset, a
+consumer whose own `plugins` leaves `typescript` out gets that rule switched off without a word
+(measured on oxlint 1.91.0).
+
+Three of oxlint's own rules are on:
+
+- `curly: ["error", "all"]`: every `if`, `else`, `for` and `while` body takes braces. It autofixes.
+- `max-depth: ["error", 4]`: no block nested more than four deep.
+- `typescript/ban-ts-comment` at its defaults: no `@ts-ignore` or `@ts-nocheck`, and a
+  `@ts-expect-error` has to say why.
 
 ## Rules
 
@@ -114,6 +122,7 @@ sense scoped to test files:
 | `no-reflect-get`                            | `Reflect.get` in favour of typed property access         |   ✅   |
 | `no-reflect-apply`                          | `Reflect.apply` in favour of a typed call                |   ✅   |
 | `no-optional-function-parameters`           | optional parameters in favour of an explicit union       |   ✅   |
+| `no-disabled-type-assertion-rules`          | inline disables of the assertion rules, or of every rule |   ✅   |
 
 ### Effect
 
@@ -134,6 +143,7 @@ sense scoped to test files:
 | `prefer-effect-match`               | chained literal ternaries over one subject                           |   ✅   |
 | `pipe-max-arguments`                | a `.pipe()` call with more than 20 arguments                         |   ✅   |
 | `no-sql-type-parameter`             | `sql<Type>` templates that assert a row shape                        |   ✅   |
+| `require-cause-when-narrowing`      | a handler that replaces an error it never read, without a `cause`    |   ✅   |
 
 ### Structure and style
 
@@ -147,7 +157,34 @@ sense scoped to test files:
 | `no-conditional-empty-object-spread` | omitting a field by spreading `{}`                    |   ✅   |
 | `statement-order`                    | top-level declarations out of order                   |   ✅   |
 | `padding-line-between-statements`    | missing or extra blank lines, per a declarative spec  |   ✅   |
+| `max-ternary-depth`                  | ternaries nested deeper than two levels               |   ✅   |
+| `no-array-filter-map`                | a `filter` and a `map` back to back on a known array  |   ✅   |
+| `no-reduce-accumulator-copy`         | a reduce that copies its accumulator on every step    |   ✅   |
 | `expect-padding`                     | a run of `expect()` calls not isolated by blank lines |   —    |
+
+`no-disabled-type-assertion-rules` reads `oxlint-disable` and `eslint-disable` comments. It reports
+the ones that name an assertion rule (begone-slop's own, itself included, plus
+`typescript/consistent-type-assertions`, `typescript/no-unsafe-type-assertion`,
+`typescript/no-non-null-assertion` and `effecttsgo/unsafe-effect-type-assertion`) and the ones that
+name no rule at all. Add your own with `{ "additionalRules": ["…"] }`. One gap it can't close: a
+blanket `oxlint-disable` or `oxlint-disable-line` silences the report about itself too, so of the
+blanket forms only `-next-line` gets caught (measured on oxlint 1.91.0).
+
+`require-cause-when-narrowing` watches `mapError`, `catch`, `catchCause` and `orElse`, plus v3's
+`catchAll` and `catchAllCause`. A handler is fine if it reads its error, passes a `cause`, or comes
+after an `Effect.tapError`, `tapErrorCause` or `tapCause` in the same pipe. `catchTag` and the rest
+of the targeted family are left alone: picking out one failure is a decision, not an accident.
+
+`no-array-filter-map` only fires when the receiver is known to be an array: a literal, an
+array-typed binding, `Array.from`, `Object.keys` and the like, or another array method's result.
+Without type information anything else might be an iterator or a collection of your own.
+
+`no-reduce-accumulator-copy` counts spreads (`{ ...acc }`, `[...acc]`), `Object.assign({}, acc)`,
+`Array.from`, `structuredClone`, `new Map` and `new Set`, and the copying array methods when the
+reduce starts from an array. That covers oxc's `no-accumulating-spread`, so there's no need to turn
+it on as well.
+
+`max-ternary-depth` takes `{ "maxDepth": 3 }` if two levels is too tight for you.
 
 `no-comments` is the opinionated one. It holds that a name needing a sentence beside it is the wrong
 name, and that durable knowledge belongs in a document rather than a line that drifts out of sync
@@ -259,12 +296,15 @@ clean one, so a break shows up as a failing test rather than a silent no-op.
 
 ## Prior art
 
-Some of these rules exist because somebody else thought of them first. Two projects were used as a
+Some of these rules exist because somebody else thought of them first. Three projects were used as a
 reference while building this one, and it would be poor form not to say so:
 
 - **[anti-slop](https://github.com/dmmulroy/anti-slop)** by Dillon Mulroy — MIT. The evidence-first
   rules owe most to this one: the type-assertion family, the `unknown` and dictionary rules, and the
   idea that an assertion should have to justify itself.
+- **[K-Mistele's anti-slop fork](https://github.com/k-mistele/anti-slop)** — MIT. The ideas behind
+  `max-ternary-depth`, `no-array-filter-map`, `no-reduce-accumulator-copy`,
+  `no-disabled-type-assertion-rules` and `require-cause-when-narrowing`.
 - **[ai-automation](https://github.com/typeonce-dev/ai-automation)** by typeonce-dev — the Effect
   rules, and a good chunk of the taste behind them.
 
