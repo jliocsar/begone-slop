@@ -54,6 +54,15 @@
     "begone-slop/no-disabled-type-assertion-rules": "error",
     "begone-slop/require-cause-when-narrowing": "error",
 
+    "begone-slop/no-manual-tagged-construction": "error",
+    "begone-slop/no-test-code-in-src": "error",
+    "begone-slop/prefer-tagged-error-handling": "error",
+    "begone-slop/prefer-yield-service": "error",
+    "begone-slop/no-reprovide-ambient-service": "error",
+    "begone-slop/no-service-parameters": "error",
+    "begone-slop/require-service-make-layer": "error",
+    "begone-slop/require-operation-span": "error",
+
     "begone-slop/padding-line-between-statements": [
       "error",
       [

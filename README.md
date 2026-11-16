@@ -26,7 +26,7 @@ export default defineConfig({
 })
 ```
 
-That is the whole setup. `extends` pulls in the 43 rules the preset enables, and `jsPlugins` loads
+That is the whole setup. `extends` pulls in the 51 rules the preset enables, and `jsPlugins` loads
 the plugin itself. Both resolve as ordinary module specifiers, because in a TypeScript config
 `extends` takes config _objects_ and your runtime does the resolving.
 
@@ -144,23 +144,31 @@ sense scoped to test files:
 | `pipe-max-arguments`                | a `.pipe()` call with more than 20 arguments                         |   ✅   |
 | `no-sql-type-parameter`             | `sql<Type>` templates that assert a row shape                        |   ✅   |
 | `require-cause-when-narrowing`      | a handler that replaces an error it never read, without a `cause`    |   ✅   |
+| `no-manual-tagged-construction`     | hand-written `{ _tag: 'X' }` literals and `_tag` class fields        |   ✅   |
+| `prefer-tagged-error-handling`      | `Predicate.isTagged` inside a broad catch                            |   ✅   |
+| `prefer-yield-service`              | `yield* Effect.context()` provided straight back                     |   ✅   |
+| `no-reprovide-ambient-service`      | `Effect.provideService` with a service just yielded from the context |   ✅   |
+| `no-service-parameters`             | parameters typed `Context.Context`, `Layer.Layer`, `ManagedRuntime`  |   ✅   |
+| `require-service-make-layer`        | a `Context.Service` with a `make` and no `static layer`              |   ✅   |
+| `require-operation-span`            | a service operation without `Effect.fn('name')` or `withSpan`        |   ✅   |
 
 ### Structure and style
 
-| Rule                                 | What it rejects                                       | Preset |
-| ------------------------------------ | ----------------------------------------------------- | :----: |
-| `no-comments`                        | every comment but `SAFETY:` and tooling directives    |   ✅   |
-| `no-switch`                          | `switch` statements, in favour of `Match`             |   ✅   |
-| `no-try-catch`                       | `try`/`catch`, in favour of `Effect.try`              |   ✅   |
-| `no-module-mocking`                  | vitest, jest and bun module mocking                   |   ✅   |
-| `no-reexport-only-modules`           | barrel modules that only re-export                    |   ✅   |
-| `no-conditional-empty-object-spread` | omitting a field by spreading `{}`                    |   ✅   |
-| `statement-order`                    | top-level declarations out of order                   |   ✅   |
-| `padding-line-between-statements`    | missing or extra blank lines, per a declarative spec  |   ✅   |
-| `max-ternary-depth`                  | ternaries nested deeper than two levels               |   ✅   |
-| `no-array-filter-map`                | a `filter` and a `map` back to back on a known array  |   ✅   |
-| `no-reduce-accumulator-copy`         | a reduce that copies its accumulator on every step    |   ✅   |
-| `expect-padding`                     | a run of `expect()` calls not isolated by blank lines |   —    |
+| Rule                                 | What it rejects                                           | Preset |
+| ------------------------------------ | --------------------------------------------------------- | :----: |
+| `no-comments`                        | every comment but `SAFETY:` and tooling directives        |   ✅   |
+| `no-switch`                          | `switch` statements, in favour of `Match`                 |   ✅   |
+| `no-try-catch`                       | `try`/`catch`, in favour of `Effect.try`                  |   ✅   |
+| `no-module-mocking`                  | vitest, jest and bun module mocking                       |   ✅   |
+| `no-test-code-in-src`                | test files, test imports and test-named exports in `src/` |   ✅   |
+| `no-reexport-only-modules`           | barrel modules that only re-export                        |   ✅   |
+| `no-conditional-empty-object-spread` | omitting a field by spreading `{}`                        |   ✅   |
+| `statement-order`                    | top-level declarations out of order                       |   ✅   |
+| `padding-line-between-statements`    | missing or extra blank lines, per a declarative spec      |   ✅   |
+| `max-ternary-depth`                  | ternaries nested deeper than two levels                   |   ✅   |
+| `no-array-filter-map`                | a `filter` and a `map` back to back on a known array      |   ✅   |
+| `no-reduce-accumulator-copy`         | a reduce that copies its accumulator on every step        |   ✅   |
+| `expect-padding`                     | a run of `expect()` calls not isolated by blank lines     |   —    |
 
 `no-disabled-type-assertion-rules` reads `oxlint-disable` and `eslint-disable` comments. It reports
 the ones that name an assertion rule (begone-slop's own, itself included, plus
@@ -185,6 +193,19 @@ reduce starts from an array. That covers oxc's `no-accumulating-spread`, so ther
 it on as well.
 
 `max-ternary-depth` takes `{ "maxDepth": 3 }` if two levels is too tight for you.
+
+`no-test-code-in-src` holds that tests live in `test/`. Inside `src/` it reports `*.test.*` and
+`*.spec.*` files, anything under a `test`, `tests` or `__tests__` directory, relative imports through
+one, and exports named like a fake (`layerTest`, `FakeClock`, `makeMockUser`, …). Both directory
+lists are options: `{ "sourceDirectories": ["src"], "testDirectories": ["test"] }`.
+
+`no-service-parameters` lets a function that builds a layer take one, and leaves alone the callbacks
+Effect's own APIs hand a context to. It and `require-operation-span` skip `*.test.*` and `*.spec.*`
+files; a helper under `test/` with another name needs an override.
+
+`require-operation-span` looks at the object a service's `make` generator returns. A property counts
+as an operation when it is an Effect, or a function returning one, so plain values and helpers pass.
+`Effect.fnUntraced` and an unnamed `Effect.fn` don't count as a span.
 
 `no-comments` is the opinionated one. It holds that a name needing a sentence beside it is the wrong
 name, and that durable knowledge belongs in a document rather than a line that drifts out of sync
@@ -304,7 +325,10 @@ reference while building this one, and it would be poor form not to say so:
   idea that an assertion should have to justify itself.
 - **[K-Mistele's anti-slop fork](https://github.com/k-mistele/anti-slop)** — MIT. The ideas behind
   `max-ternary-depth`, `no-array-filter-map`, `no-reduce-accumulator-copy`,
-  `no-disabled-type-assertion-rules` and `require-cause-when-narrowing`.
+  `no-disabled-type-assertion-rules`, `require-cause-when-narrowing`, `no-manual-tagged-construction`,
+  `no-test-code-in-src`, `prefer-tagged-error-handling`, `prefer-yield-service`,
+  `no-reprovide-ambient-service`, `no-service-parameters`, `require-service-make-layer` and
+  `require-operation-span`.
 - **[ai-automation](https://github.com/typeonce-dev/ai-automation)** by typeonce-dev — the Effect
   rules, and a good chunk of the taste behind them.
 

@@ -1,5 +1,13 @@
 import type { ESTree } from '@oxlint/plugins'
 
+export function staticKeyName(key: ESTree.Node, computed: boolean): string | undefined {
+  if (key.type === 'Identifier' && !computed) {
+    return key.name
+  }
+
+  return stringLiteralValue(key)
+}
+
 export function stringLiteralValue(node: ESTree.Node): string | undefined {
   if (node.type !== 'Literal') {
     return undefined

@@ -97,6 +97,29 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
   { rule: 'no-reduce-accumulator-copy', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
   { rule: 'no-disabled-type-assertion-rules', lines: [1, 2, 2, 3, 4, 6, 8, 9, 11] },
   { rule: 'require-cause-when-narrowing', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+  { rule: 'no-manual-tagged-construction', lines: [1, 2, 3, 4, 5, 6, 7, 8] },
+  {
+    rule: 'no-test-code-in-src',
+    fixture: 'no-test-code-in-src/src/profiles.test.ts',
+    lines: [1],
+  },
+  {
+    rule: 'no-test-code-in-src',
+    fixture: 'no-test-code-in-src/src/__tests__/helper.ts',
+    lines: [1],
+  },
+  {
+    rule: 'no-test-code-in-src',
+    fixture: 'no-test-code-in-src/src/profiles.ts',
+    lines: [1, 2, 2, 3, 4, 5, 6, 7, 8],
+  },
+  { rule: 'no-test-code-in-src', fixture: 'no-test-code-in-src/src/clean.ts', lines: [] },
+  { rule: 'prefer-tagged-error-handling', lines: [1, 2, 3, 4, 5] },
+  { rule: 'prefer-yield-service', lines: [2, 6, 10] },
+  { rule: 'no-reprovide-ambient-service', lines: [3, 7] },
+  { rule: 'no-service-parameters', lines: [1, 2, 3, 4, 5, 6, 7] },
+  { rule: 'require-service-make-layer', lines: [1, 2, 3] },
+  { rule: 'require-operation-span', lines: [9, 10, 11, 12, 13] },
 ]
 
 const UNIX_REPORT_LINE =
