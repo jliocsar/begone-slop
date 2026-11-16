@@ -3,6 +3,8 @@ import { findVariable } from './binding-scope.ts'
 import { stringLiteralValue } from './literal.ts'
 
 const EFFECT_PACKAGE = 'effect'
+const EFFECT_SUBPATH_PREFIX = 'effect/'
+const EFFECT_SCOPE_PREFIX = '@effect/'
 const TYPE_ONLY = 'type'
 
 function namesTheExport(imported: ESTree.ModuleExportName, exportName: string): boolean {
@@ -76,4 +78,35 @@ export function effectModuleMemberName(
   }
 
   return staticMemberName(node)
+}
+
+function rootObject(node: ESTree.Node): ESTree.Node {
+  return node.type === 'MemberExpression' ? rootObject(node.object) : node
+}
+
+function isEffectPackage(source: string): boolean {
+  return (
+    source === EFFECT_PACKAGE ||
+    source.startsWith(EFFECT_SUBPATH_PREFIX) ||
+    source.startsWith(EFFECT_SCOPE_PREFIX)
+  )
+}
+
+export function isImportedFromEffect(sourceCode: SourceCode, node: ESTree.Node): boolean {
+  const root = rootObject(node)
+
+  if (root.type !== 'Identifier') {
+    return false
+  }
+
+  const variable = findVariable(sourceCode.getScope(root), root.name)
+
+  return (
+    variable?.defs.some(
+      (definition) =>
+        definition.type === 'ImportBinding' &&
+        definition.parent?.type === 'ImportDeclaration' &&
+        isEffectPackage(definition.parent.source.value),
+    ) ?? false
+  )
 }

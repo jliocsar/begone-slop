@@ -92,6 +92,11 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
   },
   { rule: 'no-module-mocking', lines: [1, 2, 3, 4, 6, 8, 10, 12, 13, 14, 16, 18, 19, 21] },
   { rule: 'no-runtime-typeof', lines: [1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10] },
+  { rule: 'max-ternary-depth', lines: [1, 2, 3, 4, 5] },
+  { rule: 'no-array-filter-map', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 14] },
+  { rule: 'no-reduce-accumulator-copy', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
+  { rule: 'no-disabled-type-assertion-rules', lines: [1, 2, 2, 3, 4, 6, 8, 9, 11] },
+  { rule: 'require-cause-when-narrowing', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
 ]
 
 const UNIX_REPORT_LINE =
@@ -160,6 +165,29 @@ for (const fixtureFile of VALID_FIXTURE_FILES) {
     expect(reported).toEqual([])
   })
 }
+
+test('the preset turns on the oxlint rules it names', async () => {
+  const configPath = `${CONFIGS}/oxlint-preset.json`
+
+  await Bun.write(
+    configPath,
+    JSON.stringify({ extends: ['../../preset.json'], jsPlugins: ['../../src/index.ts'] }),
+  )
+
+  const result = await Bun.$`${OXLINT} -c ${configPath} -f unix ${FIXTURES}/preset-builtins.ts`
+    .nothrow()
+    .quiet()
+
+  const codes = new Set(
+    result.stdout
+      .toString()
+      .split('\n')
+      .flatMap((reportLine) => UNIX_REPORT_LINE.exec(reportLine)?.groups?.['code'] ?? []),
+  )
+
+  expect(codes).toContain('typescript(ban-ts-comment)')
+  expect(codes).toContain('eslint(max-depth)')
+})
 
 test('every rule the plugin defines is covered by both halves', () => {
   const defined = new Set(Object.keys(plugin.rules))
