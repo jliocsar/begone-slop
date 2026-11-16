@@ -170,8 +170,8 @@ name no rule at all. Add your own with `{ "additionalRules": ["…"] }`. One gap
 blanket `oxlint-disable` or `oxlint-disable-line` silences the report about itself too, so of the
 blanket forms only `-next-line` gets caught (measured on oxlint 1.91.0).
 
-`require-cause-when-narrowing` watches `mapError`, `catch`, `catchCause` and `orElse`, plus v3's
-`catchAll` and `catchAllCause`. A handler is fine if it reads its error, passes a `cause`, or comes
+`require-cause-when-narrowing` watches `mapError`, `catch` and `catchCause`, plus v3's `catchAll`,
+`catchAllCause` and `orElse`. A handler is fine if it reads its error, passes a `cause`, or comes
 after an `Effect.tapError`, `tapErrorCause` or `tapCause` in the same pipe. `catchTag` and the rest
 of the targeted family are left alone: picking out one failure is a decision, not an accident.
 
