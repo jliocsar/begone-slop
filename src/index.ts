@@ -18,6 +18,8 @@ import noConditionalEmptyObjectSpread from './rules/no-conditional-empty-object-
 import noDisableValidation from './rules/no-disable-validation.ts'
 import noDisabledTypeAssertionRules from './rules/no-disabled-type-assertion-rules.ts'
 import noEffectAsVoid from './rules/no-effect-asvoid.ts'
+import noFixedSleep from './rules/no-fixed-sleep.ts'
+import noFlakeMasking from './rules/no-flake-masking.ts'
 import noInOperator from './rules/no-in-operator.ts'
 import noKnownValueWidening from './rules/no-known-value-widening.ts'
 import noModuleMocking from './rules/no-module-mocking.ts'
@@ -107,5 +109,7 @@ export default definePlugin({
     'no-service-parameters': noServiceParameters,
     'require-service-make-layer': requireServiceMakeLayer,
     'require-operation-span': requireOperationSpan,
+    'no-fixed-sleep': noFixedSleep,
+    'no-flake-masking': noFlakeMasking,
   },
 })
