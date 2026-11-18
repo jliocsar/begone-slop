@@ -283,8 +283,9 @@ Two options loosen it, and both are off by default:
   named in an `export { … }` list, or a public member of an exported class, interface, enum or object
   type. Anything tagged `@internal` or `@private` is still a comment.
 
-`no-comments`, `no-switch` and `no-try-catch` take a per-file allowance, so you can turn them on in
-a codebase that already breaks them and ratchet down from there:
+`no-comments`, `no-switch`, `no-try-catch`, `no-fixed-sleep` and `no-flake-masking` take a per-file
+allowance, so you can turn them on in a codebase that already breaks them and ratchet down from
+there:
 
 ```jsonc
 {
@@ -437,8 +438,8 @@ each rules table links the exact file a rule came from.
 - **[ai-automation](https://github.com/typeonce-dev/ai-automation)** by typeonce-dev — the Effect
   rules, and a good chunk of the taste behind them.
 - **[landmines](https://github.com/interfere-inc/landmines)** by Interfere — MIT. `no-fixed-sleep`
-  and `no-flake-masking`, the exact-count allowance `no-comments`, `no-switch` and `no-try-catch`
-  take, the stubbed globals and scripted spies `no-module-mocking` catches, and the extra directives
+  and `no-flake-masking`, the exact-count allowance `no-comments`, `no-switch`, `no-try-catch`,
+  `no-fixed-sleep` and `no-flake-masking` take, the stubbed globals and scripted spies `no-module-mocking` catches, and the extra directives
   and opt-in `WARNING:` and `publicApi` exemptions in `no-comments`.
 
 Every rule here is an independent implementation written against a different plugin API, and the

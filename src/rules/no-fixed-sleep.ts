@@ -1,5 +1,10 @@
-import type { ESTree, SourceCode } from '@oxlint/plugins'
+import type { Diagnostic, ESTree, SourceCode } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import {
+  ALLOWLIST_MESSAGES,
+  ALLOWLIST_PROPERTIES,
+  reportBeyondAllowance,
+} from '../shared/allowlist.ts'
 import { rootIdentifierName } from '../shared/call-root.ts'
 import { enclosingFunction } from '../shared/enclosing-function.ts'
 import { namesTheGlobal } from '../shared/global-reference.ts'
@@ -187,7 +192,8 @@ export default defineRule({
   meta: {
     type: 'problem',
     docs: { description: 'forbid awaiting a fixed sleep inside a test or hook' },
-    messages: { fixedSleep: MESSAGE },
+    messages: { fixedSleep: MESSAGE, ...ALLOWLIST_MESSAGES },
+    schema: [{ type: 'object', properties: ALLOWLIST_PROPERTIES, additionalProperties: false }],
   },
   create(context) {
     const { sourceCode } = context
@@ -219,14 +225,12 @@ export default defineRule({
           awaitsInTests.push(node)
         }
       },
-      'Program:exit'() {
-        if (fakeTimerCalls.length > 0) {
-          return
-        }
+      'Program:exit'(program) {
+        const diagnostics = awaitsInTests
+          .filter((candidate) => fakeTimerCalls.length === 0 && isSleep(candidate.argument))
+          .map((node): Diagnostic => ({ node, messageId: 'fixedSleep' }))
 
-        for (const node of awaitsInTests.filter((candidate) => isSleep(candidate.argument))) {
-          context.report({ node, messageId: 'fixedSleep' })
-        }
+        reportBeyondAllowance(context, program, diagnostics)
       },
     }
   },

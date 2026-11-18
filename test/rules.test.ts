@@ -159,7 +159,39 @@ const CASES: { rule: string; lines: number[]; fixture?: string; options?: RuleOp
   { rule: 'require-service-make-layer', lines: [1, 2, 3] },
   { rule: 'require-operation-span', lines: [9, 10, 11, 12, 13] },
   { rule: 'no-fixed-sleep', lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+  { rule: 'no-fixed-sleep', options: { allow: { 'fixtures/no-fixed-sleep.ts': 10 } }, lines: [] },
+  { rule: 'no-fixed-sleep', options: { allow: { 'fixtures/no-fixed-sleep.ts': 11 } }, lines: [1] },
+  {
+    rule: 'no-fixed-sleep',
+    options: { allow: { 'fixtures/no-fixed-sleep.ts': 9 } },
+    lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  },
+  {
+    rule: 'no-fixed-sleep',
+    options: { allow: { 'fixed-sleep.ts': 10 } },
+    lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  },
   { rule: 'no-flake-masking', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13] },
+  {
+    rule: 'no-flake-masking',
+    options: { allow: { 'fixtures/no-flake-masking.ts': 14 } },
+    lines: [],
+  },
+  {
+    rule: 'no-flake-masking',
+    options: { allow: { 'fixtures/no-flake-masking.ts': 15 } },
+    lines: [1],
+  },
+  {
+    rule: 'no-flake-masking',
+    options: { allow: { 'fixtures/no-flake-masking.ts': 13 } },
+    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13],
+  },
+  {
+    rule: 'no-flake-masking',
+    options: { allow: { 'flake-masking.ts': 14 } },
+    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13],
+  },
 ]
 
 const UNIX_REPORT_LINE =

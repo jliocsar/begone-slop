@@ -1,5 +1,10 @@
-import type { ESTree } from '@oxlint/plugins'
+import type { Diagnostic, ESTree } from '@oxlint/plugins'
 import { defineRule } from '@oxlint/plugins'
+import {
+  ALLOWLIST_MESSAGES,
+  ALLOWLIST_PROPERTIES,
+  reportBeyondAllowance,
+} from '../shared/allowlist.ts'
 import { rootIdentifierName } from '../shared/call-root.ts'
 import { staticKeyName } from '../shared/literal.ts'
 
@@ -74,17 +79,20 @@ export default defineRule({
   meta: {
     type: 'problem',
     docs: { description: 'forbid test retries and raised test timeouts' },
-    messages: { retry: RETRY_MESSAGE, timeout: TIMEOUT_MESSAGE },
+    messages: { retry: RETRY_MESSAGE, timeout: TIMEOUT_MESSAGE, ...ALLOWLIST_MESSAGES },
+    schema: [{ type: 'object', properties: ALLOWLIST_PROPERTIES, additionalProperties: false }],
   },
   create(context) {
+    const diagnostics: Diagnostic[] = []
+
     const reportOptions = (node: ESTree.Node | undefined, timeouts: ReadonlySet<string>) => {
       for (const property of objectProperties(node)) {
         const key = keyOf(property)
 
         if (key === RETRY) {
-          context.report({ node: property, messageId: 'retry' })
+          diagnostics.push({ node: property, messageId: 'retry' })
         } else if (key !== undefined && timeouts.has(key)) {
-          context.report({ node: property, messageId: 'timeout' })
+          diagnostics.push({ node: property, messageId: 'timeout' })
         }
       }
     }
@@ -97,7 +105,7 @@ export default defineRule({
       reportOptions(third, TEST_TIMEOUTS)
 
       if (second?.type !== 'ObjectExpression' && isTimeoutArgument(third)) {
-        context.report({ node: third, messageId: 'timeout' })
+        diagnostics.push({ node: third, messageId: 'timeout' })
       }
     }
 
@@ -106,9 +114,9 @@ export default defineRule({
         if (isRunnerCall(node, VITEST_RUNNERS, SET_CONFIG)) {
           reportOptions(node.arguments[0], CONFIG_TIMEOUTS)
         } else if (isRunnerCall(node, JEST_RUNNERS, JEST_RETRY)) {
-          context.report({ node, messageId: 'retry' })
+          diagnostics.push({ node, messageId: 'retry' })
         } else if (isRunnerCall(node, JEST_RUNNERS, JEST_TIMEOUT) || isBunDefaultTimeout(node)) {
-          context.report({ node, messageId: 'timeout' })
+          diagnostics.push({ node, messageId: 'timeout' })
         } else if (isTestCall(node)) {
           reportTestCall(node)
         }
@@ -117,6 +125,9 @@ export default defineRule({
         if (keyOf(node) === TEST_CONFIG) {
           reportOptions(node.value, NO_TIMEOUTS)
         }
+      },
+      'Program:exit'(program) {
+        reportBeyondAllowance(context, program, diagnostics)
       },
     }
   },
