@@ -8,13 +8,39 @@ type RuleOptions = {
   readonly publicApi?: readonly string[]
 }
 
+type RuleCase = { rule: string; lines: number[]; fixture?: string; options?: RuleOptions }
+
 const OXLINT = ['bunx', '--bun', 'oxlint']
 const FIXTURES = `${import.meta.dir}/fixtures`
 const VALID_FIXTURES = `${import.meta.dir}/fixtures/valid`
 const CONFIGS = `${import.meta.dir}/tmp`
 const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
-const CASES: { rule: string; lines: number[]; fixture?: string; options?: RuleOptions }[] = [
+const ALLOWANCE_CASES: RuleCase[] = [
+  { rule: 'no-switch', lines: [1, 2] },
+  { rule: 'no-try-catch', lines: [1, 2] },
+  {
+    rule: 'no-comments',
+    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20],
+  },
+  { rule: 'no-fixed-sleep', lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+  { rule: 'no-flake-masking', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13] },
+].flatMap(({ rule, lines }) => {
+  const path = `fixtures/${rule}.ts`
+  const unrelatedPath = path.replace('fixtures/no-', '')
+  const count = lines.length
+
+  return [
+    { rule, lines },
+    { rule, options: { allow: { [path]: count } }, lines: [] },
+    { rule, options: { allow: { [path]: count + 1 } }, lines: [1] },
+    { rule, options: { allow: { [path]: count - 1 } }, lines },
+    { rule, options: { allow: { [unrelatedPath]: count } }, lines },
+  ]
+})
+
+const CASES: RuleCase[] = [
+  ...ALLOWANCE_CASES,
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
   { rule: 'no-shadowed-error-field', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
   { rule: 'expect-padding', lines: [2, 4, 8, 10] },
@@ -36,14 +62,6 @@ const CASES: { rule: string; lines: number[]; fixture?: string; options?: RuleOp
     fixture: 'statement-order.exported-constants.ts',
     lines: [4, 9],
   },
-  { rule: 'no-switch', lines: [1, 2] },
-  { rule: 'no-switch', options: { allow: { 'fixtures/no-switch.ts': 2 } }, lines: [] },
-  { rule: 'no-switch', options: { allow: { 'fixtures/no-switch.ts': 3 } }, lines: [1] },
-  { rule: 'no-switch', options: { allow: { 'fixtures/no-switch.ts': 1 } }, lines: [1, 2] },
-  { rule: 'no-switch', options: { allow: { 'switch.ts': 2 } }, lines: [1, 2] },
-  { rule: 'no-try-catch', lines: [1, 2] },
-  { rule: 'no-try-catch', options: { allow: { 'fixtures/no-try-catch.ts': 2 } }, lines: [] },
-  { rule: 'no-try-catch', options: { allow: { 'fixtures/no-try-catch.ts': 5 } }, lines: [1] },
   { rule: 'no-in-operator', lines: [1, 2] },
   { rule: 'no-service-option', lines: [1, 2, 3, 7, 8, 9] },
   { rule: 'no-effect-asvoid', lines: [1, 2, 3, 7, 8, 9, 10] },
@@ -84,12 +102,6 @@ const CASES: { rule: string; lines: number[]; fixture?: string; options?: RuleOp
     lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18, 19],
   },
   { rule: 'prefer-effect-match', lines: [1, 2, 3, 4, 5, 6, 7, 8] },
-  {
-    rule: 'no-comments',
-    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20],
-  },
-  { rule: 'no-comments', options: { allow: { 'fixtures/no-comments.ts': 19 } }, lines: [] },
-  { rule: 'no-comments', options: { allow: { 'fixtures/no-comments.ts': 20 } }, lines: [1] },
   {
     rule: 'no-comments',
     fixture: 'no-comments.warnings.ts',
@@ -158,40 +170,6 @@ const CASES: { rule: string; lines: number[]; fixture?: string; options?: RuleOp
   { rule: 'no-service-parameters', lines: [1, 2, 3, 4, 5, 6, 7] },
   { rule: 'require-service-make-layer', lines: [1, 2, 3] },
   { rule: 'require-operation-span', lines: [9, 10, 11, 12, 13] },
-  { rule: 'no-fixed-sleep', lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
-  { rule: 'no-fixed-sleep', options: { allow: { 'fixtures/no-fixed-sleep.ts': 10 } }, lines: [] },
-  { rule: 'no-fixed-sleep', options: { allow: { 'fixtures/no-fixed-sleep.ts': 11 } }, lines: [1] },
-  {
-    rule: 'no-fixed-sleep',
-    options: { allow: { 'fixtures/no-fixed-sleep.ts': 9 } },
-    lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-  },
-  {
-    rule: 'no-fixed-sleep',
-    options: { allow: { 'fixed-sleep.ts': 10 } },
-    lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-  },
-  { rule: 'no-flake-masking', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13] },
-  {
-    rule: 'no-flake-masking',
-    options: { allow: { 'fixtures/no-flake-masking.ts': 14 } },
-    lines: [],
-  },
-  {
-    rule: 'no-flake-masking',
-    options: { allow: { 'fixtures/no-flake-masking.ts': 15 } },
-    lines: [1],
-  },
-  {
-    rule: 'no-flake-masking',
-    options: { allow: { 'fixtures/no-flake-masking.ts': 13 } },
-    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13],
-  },
-  {
-    rule: 'no-flake-masking',
-    options: { allow: { 'flake-masking.ts': 14 } },
-    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13],
-  },
 ]
 
 const UNIX_REPORT_LINE =

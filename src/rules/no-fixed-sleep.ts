@@ -226,9 +226,11 @@ export default defineRule({
         }
       },
       'Program:exit'(program) {
-        const diagnostics = awaitsInTests
-          .filter((candidate) => fakeTimerCalls.length === 0 && isSleep(candidate.argument))
-          .map((node): Diagnostic => ({ node, messageId: 'fixedSleep' }))
+        const usesRealTimers = fakeTimerCalls.length === 0
+
+        const diagnostics = awaitsInTests.flatMap((node): Diagnostic[] =>
+          usesRealTimers && isSleep(node.argument) ? [{ node, messageId: 'fixedSleep' }] : [],
+        )
 
         reportBeyondAllowance(context, program, diagnostics)
       },
