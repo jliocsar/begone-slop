@@ -63,6 +63,9 @@
     "begone-slop/require-service-make-layer": "error",
     "begone-slop/require-operation-span": "error",
 
+    "begone-slop/no-fixed-sleep": "error",
+    "begone-slop/no-flake-masking": "error",
+
     "begone-slop/padding-line-between-statements": [
       "error",
       [

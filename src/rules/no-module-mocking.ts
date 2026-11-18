@@ -3,26 +3,42 @@ import { defineRule } from '@oxlint/plugins'
 import { findVariable } from '../shared/binding-scope.ts'
 import { stringLiteralValue } from '../shared/literal.ts'
 
-const RUNNER_GLOBALS = new Set(['vi', 'vitest', 'jest'])
-
-const VITEST_AND_JEST_METHODS: ReadonlySet<string> = new Set([
+const JEST_METHODS: ReadonlySet<string> = new Set([
   'doMock',
   'mock',
   'setMock',
   'unstable_mockModule',
 ])
 
+const VITEST_METHODS: ReadonlySet<string> = new Set([...JEST_METHODS, 'stubGlobal'])
 const BUN_METHODS: ReadonlySet<string> = new Set(['module'])
+const STUB_METHODS = new Set(['stubGlobal'])
+
+const SCRIPTED_SPY_METHODS = new Set([
+  'mockImplementation',
+  'mockImplementationOnce',
+  'mockReturnValue',
+  'mockReturnValueOnce',
+])
+
+const RUNNER_GLOBALS = new Map([
+  ['vi', VITEST_METHODS],
+  ['vitest', VITEST_METHODS],
+  ['jest', JEST_METHODS],
+])
 
 const RUNNER_IMPORTS = [
-  { source: 'vitest', imported: 'vi', methods: VITEST_AND_JEST_METHODS },
-  { source: 'vitest', imported: 'vitest', methods: VITEST_AND_JEST_METHODS },
-  { source: '@jest/globals', imported: 'jest', methods: VITEST_AND_JEST_METHODS },
+  { source: 'vitest', imported: 'vi', methods: VITEST_METHODS },
+  { source: 'vitest', imported: 'vitest', methods: VITEST_METHODS },
+  { source: '@jest/globals', imported: 'jest', methods: JEST_METHODS },
   { source: 'bun:test', imported: 'mock', methods: BUN_METHODS },
 ]
 
-const MESSAGE =
+const MODULE_MOCK_MESSAGE =
   'Replace module mocking with dependency injection through a real interface, service layer, or faithful test implementation.'
+
+const STUB_MESSAGE =
+  'A stub answers with whatever the test told it to, so the test only proves it agrees with itself. Pass a real implementation or a faithful fake through an interface or service layer, and keep spies to watching calls.'
 
 function importedName(specifier: ESTree.Node, member: string | undefined): string | undefined {
   if (specifier.type === 'ImportNamespaceSpecifier') {
@@ -62,7 +78,7 @@ function importedRunnerMethods(
 }
 
 function globalRunnerMethods(name: string): ReadonlySet<string> | undefined {
-  return RUNNER_GLOBALS.has(name) ? VITEST_AND_JEST_METHODS : undefined
+  return RUNNER_GLOBALS.get(name)
 }
 
 function resolvedRunnerMethods(
@@ -119,30 +135,44 @@ function methodName(callee: ESTree.MemberExpression): string | undefined {
   return callee.property.type === 'Identifier' ? callee.property.name : undefined
 }
 
-function isModuleMockCall(sourceCode: SourceCode, node: ESTree.CallExpression): boolean {
+function mockingMessageId(
+  sourceCode: SourceCode,
+  node: ESTree.CallExpression,
+): 'moduleMock' | 'stub' | undefined {
   const { callee } = node
 
   if (callee.type !== 'MemberExpression') {
-    return false
+    return undefined
   }
 
-  const methods = runnerMethods(sourceCode, callee.object)
-  const method = methodName(callee)
+  const method = methodName(callee) ?? ''
 
-  return methods !== undefined && method !== undefined && methods.has(method)
+  if (SCRIPTED_SPY_METHODS.has(method)) {
+    return 'stub'
+  }
+
+  if (runnerMethods(sourceCode, callee.object)?.has(method) !== true) {
+    return undefined
+  }
+
+  return STUB_METHODS.has(method) ? 'stub' : 'moduleMock'
 }
 
 export default defineRule({
   meta: {
     type: 'problem',
-    docs: { description: 'forbid vitest, jest and bun module mocking' },
-    messages: { moduleMock: MESSAGE },
+    docs: {
+      description: 'forbid vitest, jest and bun module mocking, stubbed globals and scripted spies',
+    },
+    messages: { moduleMock: MODULE_MOCK_MESSAGE, stub: STUB_MESSAGE },
   },
   create(context) {
     return {
       CallExpression(node) {
-        if (isModuleMockCall(context.sourceCode, node)) {
-          context.report({ node, messageId: 'moduleMock' })
+        const messageId = mockingMessageId(context.sourceCode, node)
+
+        if (messageId !== undefined) {
+          context.report({ node, messageId })
         }
       },
     }

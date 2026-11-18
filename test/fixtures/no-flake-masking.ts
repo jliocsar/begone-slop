@@ -1,0 +1,13 @@
+test('retries', { retry: 3 }, async () => {})
+it('raises a timeout', async () => {}, 10_000)
+test('takes options last', async () => {}, { timeout: 10_000 })
+describe('a retried suite', { retry: 2 }, () => {})
+test.each([1])('runs a table', async () => {}, 10_000)
+vi.setConfig({ testTimeout: 10_000 })
+vi.setConfig({ hookTimeout: 10_000 })
+jest.setTimeout(10_000)
+jest.retryTimes(3)
+export default { test: { retry: 2 } }
+test('does both', { retry: 1, timeout: 5000 }, async () => {})
+it.concurrent('runs alongside', async () => {}, 5000)
+setDefaultTimeout(30_000)

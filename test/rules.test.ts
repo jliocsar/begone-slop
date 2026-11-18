@@ -2,13 +2,45 @@ import { expect, test } from 'bun:test'
 import preset from '../preset.json' with { type: 'json' }
 import plugin from '../src/index.ts'
 
+type RuleOptions = {
+  readonly allow?: Readonly<Record<string, number>>
+  readonly allowWarnings?: boolean
+  readonly publicApi?: readonly string[]
+}
+
+type RuleCase = { rule: string; lines: number[]; fixture?: string; options?: RuleOptions }
+
 const OXLINT = ['bunx', '--bun', 'oxlint']
 const FIXTURES = `${import.meta.dir}/fixtures`
 const VALID_FIXTURES = `${import.meta.dir}/fixtures/valid`
 const CONFIGS = `${import.meta.dir}/tmp`
 const PRESET_RULE_SETTINGS = new Map(Object.entries(preset.rules))
 
-const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
+const ALLOWANCE_CASES: RuleCase[] = [
+  { rule: 'no-switch', lines: [1, 2] },
+  { rule: 'no-try-catch', lines: [1, 2] },
+  {
+    rule: 'no-comments',
+    lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20],
+  },
+  { rule: 'no-fixed-sleep', lines: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+  { rule: 'no-flake-masking', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 13] },
+].flatMap(({ rule, lines }) => {
+  const path = `fixtures/${rule}.ts`
+  const unrelatedPath = path.replace('fixtures/no-', '')
+  const count = lines.length
+
+  return [
+    { rule, lines },
+    { rule, options: { allow: { [path]: count } }, lines: [] },
+    { rule, options: { allow: { [path]: count + 1 } }, lines: [1] },
+    { rule, options: { allow: { [path]: count - 1 } }, lines },
+    { rule, options: { allow: { [unrelatedPath]: count } }, lines },
+  ]
+})
+
+const CASES: RuleCase[] = [
+  ...ALLOWANCE_CASES,
   { rule: 'no-tag-access', lines: [1, 2, 3, 4] },
   { rule: 'no-shadowed-error-field', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
   { rule: 'expect-padding', lines: [2, 4, 8, 10] },
@@ -30,8 +62,6 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
     fixture: 'statement-order.exported-constants.ts',
     lines: [4, 9],
   },
-  { rule: 'no-switch', lines: [1, 2] },
-  { rule: 'no-try-catch', lines: [1, 2] },
   { rule: 'no-in-operator', lines: [1, 2] },
   { rule: 'no-service-option', lines: [1, 2, 3, 7, 8, 9] },
   { rule: 'no-effect-asvoid', lines: [1, 2, 3, 7, 8, 9, 10] },
@@ -72,7 +102,24 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
     lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18, 19],
   },
   { rule: 'prefer-effect-match', lines: [1, 2, 3, 4, 5, 6, 7, 8] },
-  { rule: 'no-comments', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+  {
+    rule: 'no-comments',
+    fixture: 'no-comments.warnings.ts',
+    options: { allowWarnings: true },
+    lines: [2, 3, 4],
+  },
+  {
+    rule: 'no-comments',
+    fixture: 'no-comments.public-api.ts',
+    options: { publicApi: ['/fixtures/no-comments\\.public-api\\.ts$'] },
+    lines: [3, 8, 10, 16, 25],
+  },
+  {
+    rule: 'no-comments',
+    fixture: 'no-comments.public-api.ts',
+    options: { publicApi: ['/packages/sdk/'] },
+    lines: [1, 3, 5, 8, 10, 12, 14, 16, 19, 21, 25, 28, 30, 33, 35],
+  },
   {
     rule: 'no-cascading-layer-provide',
     lines: [4, 5, 6, 7, 8, 9, 14, 15, 15, 18, 20, 21, 22, 23],
@@ -90,7 +137,10 @@ const CASES: { rule: string; lines: number[]; fixture?: string }[] = [
     rule: 'no-object-parameters',
     lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 19, 20, 20],
   },
-  { rule: 'no-module-mocking', lines: [1, 2, 3, 4, 6, 8, 10, 12, 13, 14, 16, 18, 19, 21] },
+  {
+    rule: 'no-module-mocking',
+    lines: [1, 2, 3, 4, 6, 8, 10, 12, 13, 14, 16, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28],
+  },
   { rule: 'no-runtime-typeof', lines: [1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10] },
   { rule: 'max-ternary-depth', lines: [1, 2, 3, 4, 5] },
   { rule: 'no-array-filter-map', lines: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 14] },
@@ -136,9 +186,11 @@ const RULES_WITH_VALID_FIXTURE = new Set(
 async function runRule(
   rule: string,
   fixturePath: string,
+  options: RuleOptions | undefined,
 ): Promise<{ lines: number[]; messages: string[]; exitCode: number }> {
-  const configPath = `${CONFIGS}/oxlint-${rule}.json`
-  const ruleSetting = PRESET_RULE_SETTINGS.get(`begone-slop/${rule}`) ?? 'error'
+  const configPath = `${CONFIGS}/oxlint-${rule}${options === undefined ? '' : '-with-options'}.json`
+  const presetSetting = PRESET_RULE_SETTINGS.get(`begone-slop/${rule}`) ?? 'error'
+  const ruleSetting = options === undefined ? presetSetting : ['error', options]
 
   await Bun.write(
     configPath,
@@ -168,9 +220,11 @@ async function runRule(
   }
 }
 
-for (const { rule, lines, fixture = `${rule}.ts` } of CASES) {
-  test(`${rule} rejects ${fixture}`, async () => {
-    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${fixture}`)
+for (const { rule, lines, fixture = `${rule}.ts`, options } of CASES) {
+  const configured = options === undefined ? '' : ` with ${JSON.stringify(options)}`
+
+  test(`${rule} rejects ${fixture}${configured}`, async () => {
+    const { lines: reported, messages } = await runRule(rule, `${FIXTURES}/${fixture}`, options)
     const unrendered = messages.filter((message) => message.includes('{{') || message.length === 0)
 
     expect(reported).toEqual(lines)
@@ -182,7 +236,11 @@ for (const fixtureFile of VALID_FIXTURE_FILES) {
   const rule = fixtureFile.split('.')[0] ?? fixtureFile
 
   test(`${rule} accepts valid/${fixtureFile}`, async () => {
-    const { lines: reported, exitCode } = await runRule(rule, `${VALID_FIXTURES}/${fixtureFile}`)
+    const { lines: reported, exitCode } = await runRule(
+      rule,
+      `${VALID_FIXTURES}/${fixtureFile}`,
+      undefined,
+    )
 
     expect(exitCode).toBe(0)
     expect(reported).toEqual([])
