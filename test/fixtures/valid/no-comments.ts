@@ -35,3 +35,15 @@ const nu = mu as unknown[]
 // @vitest-environment jsdom
 /* @jest-environment node */
 //# sourceMappingURL=no-comments.js.map
+// nosemgrep: javascript.lang.security.audit.path-traversal
+// nosemgrep
+/* SPDX-License-Identifier: MIT */
+// SPDX-License-Identifier: Apache-2.0
+/*! @license MIT */
+/**
+ * @license Apache-2.0
+ */
+const xi = import(/* webpackChunkName: "settings" */ './settings')
+const omicron = import(/* @vite-ignore */ dynamicPath)
+// oxfmt-ignore
+const pi = [1,0,0,1]

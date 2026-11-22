@@ -39,3 +39,10 @@ import * as vitestNamespace from 'vitest'
 vitestNamespace.vi.fn()
 vitestNamespace.expect.mock('./user-store')
 vitestNamespace[methodFromAVariable].mock('./user-store')
+spy.mockClear()
+spy.mockReset()
+jest.stubGlobal('fetch', fakeFetch)
+helpers.vi.stubGlobal('fetch', fakeFetch)
+mockImplementation(() => 1)
+const { mockReturnValue } = spy
+spy[methodFromAVariable](1)
