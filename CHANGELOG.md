@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.13](https://github.com/jliocsar/begone-slop/compare/v0.2.12...v0.2.13) (2026-11-22)
+
+
+### Features
+
+* add eight Effect convention rules ([#34](https://github.com/jliocsar/begone-slop/issues/34)) ([e1a83be](https://github.com/jliocsar/begone-slop/commit/e1a83be8459bb58172665a831b6e1c54e6da482d))
+* add five rules borrowed from anti-slop, turn on max-depth and ban-ts-comment ([#32](https://github.com/jliocsar/begone-slop/issues/32)) ([2c471b5](https://github.com/jliocsar/begone-slop/commit/2c471b52f011630472ac1952d8a4a188be87c4b5))
+* add no-fixed-sleep, no-flake-masking and a per-file allowance, from landmines ([#35](https://github.com/jliocsar/begone-slop/issues/35)) ([ba23b92](https://github.com/jliocsar/begone-slop/commit/ba23b9271bbb30fb2d9aa83bdf6f027c4ba3620b))
+
 ## [0.2.12](https://github.com/jliocsar/begone-slop/compare/v0.2.11...v0.2.12) (2026-11-06)
 
 
